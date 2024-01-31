@@ -1,0 +1,13 @@
+# 忽略文件
+*.zip
+*.rar
+*.json
+*.code-workspace
+ExcalidrawScripts.md
+
+
+# 忽略文件夹
+Downloaded
+TestScripts
+.Archive
+.history
