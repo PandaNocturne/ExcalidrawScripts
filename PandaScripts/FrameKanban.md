@@ -82,10 +82,10 @@ if (frameElements.length >= 1) {
         let frameLink;
         // !
         if (choice === true) {
+            // frameLink = `- ⏩[[${fileName}#^frame=${el.id}|${el.name}]]<br>![[${fileName}#^frame=${el.id}]]`;
             frameLink = `- ⏩[[${fileName}#^frame=${el.id}|${el.name}]]<br>[![[${fileName}#^frame=${el.id}]]](${fileName}#^frame=${el.id})`;
         } else {
             frameLink = `- ⏩[[${fileName}#^frame=${el.id}|${el.name}]]`;
-
         }
         frameLinks.push(frameLink);
     }
@@ -95,10 +95,12 @@ const kanbanYaml = "---\n\nkanban-plugin: basic\n\n---\n\n";
 const kanbanSetting = {
     "kanban-plugin": "basic",
     "lane-width": KanbanLaneWidth,
+    "show-checkboxes": false,
+    "archive-with-date": false
 };
 
 const kanbanEndText = `\n\n%% kanban:settings\n\`\`\`\n${JSON.stringify(kanbanSetting)}\n\`\`\`\n%%`;
-const extrTexts = kanbanYaml + `## [[${fileName}|♻FrameKanban]]\n\n` + frameLinks.join("\n") + kanbanEndText;
+const extrTexts = kanbanYaml + `## [[${fileName}]]\n\n` + frameLinks.join("\n") + kanbanEndText;
 
 let markdownFile = app.vault.getAbstractFileByPath(kanbanFilePath);
 

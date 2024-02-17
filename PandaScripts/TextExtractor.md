@@ -1,6 +1,6 @@
 await ea.addElementsToView(); //to ensure all images are saved into the file
 const api = ea.getExcalidrawAPI();
-const modalForm = app.plugins.plugins.modalforms.api;
+// const modalForm = app.plugins.plugins.modalforms.api;
 const fs = require('fs');
 const path = require('path');
 const Activefile = app.workspace.getActiveFile();
