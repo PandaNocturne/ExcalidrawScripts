@@ -14,7 +14,7 @@ if (!settings["QuickerInsertZKCardPath"]) {
 			description: "TimeStampNote的存放路径(相对路径)<br>eg：D-每日生活记录/QuickNotes<br>空值：默认为当前笔记路径"
 		},
 		"QuickerInsertZKCardTemplate": {
-			value: "YYYY/YYYYMM/YYYYMMDD/YYYYMMDDHHMMSS",
+			value: "[QuickNote]-YYYYMMDDHHmmss",
 			description: "TimeStampNote默认名称，若为存储路径用/隔开<br>eg：YYYYMM/YYYYMMDDHHMMSS"
 		},
 		"QuickerInsertZKCardYaml": {
@@ -22,15 +22,6 @@ if (!settings["QuickerInsertZKCardPath"]) {
 			height: "250px",
 			description: "设定笔记模板"
 		},
-		"QuickerInsertZKCardImagePath": {
-			value: "Y-图形文件存储/Excalidraw图形/Icons",
-			description: "配置图标的文件夹",
-		},
-		"Default Insert Type": {
-			value: "Box",
-			valueset: ["Card", "Frame", "Link", "Image", "Box", "无"],
-			description: "Card(图标类型卡片)、Frame(嵌入式Frame)、Link(笔记链接)、Image(SVG图片)<br>无：ESC或回车退出，其他类型则直接创建",
-		}
 	};
 	ea.setScriptSettings(settings);
 }
@@ -46,22 +37,6 @@ console.log(timestamp);
 
 // 创建文件夹路径下的Markdown文件，fname为文件名
 const Yaml = settings["QuickerInsertZKCardYaml"].value;
-
-
-// 设置默认值
-let fileAlistName = "";
-let InsertType = settings["Default Insert Type"].value;
-
-listFiles = fileListByPath(settings["QuickerInsertZKCardImagePath"].value);
-listFiles.sort((a, b) => a.localeCompare(b));
-let listFileNames = [];
-for (i of listFiles) {
-	listFileNames.push(path.basename(i));
-}
-console.log(listFileNames);
-
-let insertImageName = listFileNames[0];
-console.log(insertImageName);
 
 ea.setView("active");
 const trashFiles = ea.getViewSelectedElements().filter(el => el.link);
@@ -95,63 +70,10 @@ if (Object.keys(trashFiles).length) {
 	return; // 提前结束函数的执行
 
 } else {
-
-	const customControls = (container) => {
-		new ea.obsidian.Setting(container)
-			.setName(`插入笔记图标`)
-			.addDropdown(dropdown => {
-				listFileNames.forEach(fileName => dropdown.addOption(fileName, fileName));
-				dropdown
-					.setValue(insertImageName)
-					.onChange(value => {
-						insertImageName = value;
-					});
-			});
-	};
-
-	fileAlistName = await utils.inputPrompt(
-		"时间戳笔记别名",
-		"输入文件名别名，默认为📝",
-		"",
-		[
-			{
-				caption: "Card",
-				action: () => {
-					InsertType = "Card";
-					return;
-				}
-			},
-			{
-				caption: "Link",
-				action: () => {
-					InsertType = "Link";
-					return;
-				}
-			},
-			{
-				caption: "Frame",
-				action: () => { InsertType = "Frame"; return; }
-			},
-			{
-				caption: "Image",
-				action: () => { InsertType = "Image"; return; }
-			},
-			{
-				caption: "Box",
-				action: () => { InsertType = "Box"; return; }
-			}
-		],
-		1,
-		false,
-		customControls
-	);
-
-
 	// 时间戳笔记路径
-	const filePath = fileAlistName ? `${folderPath}/${timestamp}_${fileAlistName}.md` : `${folderPath}/${timestamp}.md`;
+	const filePath = `${folderPath}/${timestamp}.md`;
 
 	console.log(filePath);
-
 	const fileName = path.basename(filePath).replace(/\.md/, "");
 	console.log([filePath, fileName]);
 
@@ -160,33 +82,7 @@ if (Object.keys(trashFiles).length) {
 	console.log(rootFolder);
 
 
-	// 设置默认输入文本
-	// let inputText = "";
-
-	// 添加Markdown文件为图片到当前文件
-	if (InsertType == "Card") {
-		let { insertType, inputText } = await openEditPrompt();
-		if (!insertType) return;
-
-		await app.fileManager.createNewFile(rootFolder, filePath, "md", inputText ? `${Yaml}\n${inputText}` : `${Yaml}`);
-		let id = await ea.addImage(0, 0, insertImageName);
-		let el = ea.getElement(id);
-		el.link = `[[${fileName}]]`;
-
-	} else if (InsertType == "Link") {
-		let { insertType, inputText } = await openEditPrompt();
-		if (!insertType) return;
-
-		await app.fileManager.createNewFile(rootFolder, filePath, "md", inputText ? `${Yaml}\n${inputText}` : `${Yaml}`);
-
-		let id = await ea.addText(0, 0, fileAlistName ? `[[${fileName}|${fileAlistName}]]` : `[[${fileName}|📝]]`);
-
-		let el = ea.getElement(id);
-		el.link = `[[${fileName}]]`;
-		el.fontSize = 80;
-
-
-	} else if (InsertType == "Frame") {
+	if (filePath) {
 		let { insertType, inputText } = await openEditPrompt();
 		if (!insertType) return;
 
@@ -202,46 +98,9 @@ if (Object.keys(trashFiles).length) {
 		// ea.style.roundness = { type: 3 };
 		ea.style.strokeWidth = 2;
 
-		let id = await ea.addIFrame(0, 0, 400, 200, 0, file);
+		let id = await ea.addIFrame(0, 0, 600, 300, 0, file);
 		let el = ea.getElement(id);
 		el.link = `[[${fileName}]]`;
-
-
-	} else if (InsertType == "Image") {
-		let { insertType, inputText } = await openEditPrompt();
-		if (!insertType) return;
-
-		// 插入图片建议不用Yaml
-		let file = await app.fileManager.createNewFile(rootFolder, filePath, "md", inputText ? `${Yaml}\n${inputText}` : "");
-
-		let id = await ea.addImage(0, 0, file);
-		let el = ea.getElement(id);
-		el.link = `[[${fileName}]]`;
-
-	} else if (InsertType == "Box") {
-		let { insertType, inputText } = await openEditPrompt();
-		if (!insertType) return;
-
-		ea.style.backgroundColor = "transparent";
-		ea.style.strokeColor = "#1e1e1e";
-		ea.style.fillStyle = 'solid';
-		ea.style.roughness = 0;
-		// ea.style.roundness = { type: 3 }; // 圆角
-		ea.style.strokeWidth = 2;
-		ea.style.fontFamily = 4;
-		ea.style.fontSize = 20;
-
-		let id = await ea.addText(0, 0, inputText,
-			{
-				width: 500,
-				box: true,
-				wrapAt: 90,
-				textAlign: "left",
-				textVerticalAlign: "middle",
-				box: "box"
-			});
-
-		let el = ea.getElement(id);
 
 	} else {
 		return;
