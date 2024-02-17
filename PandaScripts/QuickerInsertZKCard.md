@@ -95,7 +95,7 @@ if (Object.keys(trashFiles).length) {
 		ea.style.fillStyle = "solid";
 		ea.style.backgroundColor = "#ced4da";
 		ea.style.roughness = 0;
-		// ea.style.roundness = { type: 3 };
+		ea.style.roundness = { type: 3 };
 		ea.style.strokeWidth = 2;
 
 		let id = await ea.addIFrame(0, 0, 600, 300, 0, file);
