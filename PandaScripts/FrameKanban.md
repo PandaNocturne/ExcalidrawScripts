@@ -82,10 +82,10 @@ if (frameElements.length >= 1) {
         let frameLink;
         // !
         if (choice === true) {
-            // frameLink = `- ⏩[[${fileName}#^frame=${el.id}|${el.name}]]<br>![[${fileName}#^frame=${el.id}]]`;
-            frameLink = `- ⏩[[${fileName}#^frame=${el.id}|${el.name}]]<br>[![[${fileName}#^frame=${el.id}]]](${fileName}#^frame=${el.id})`;
+            // frameLink = `- [[${fileName}#^frame=${el.id}|${el.name}]]<br>![[${fileName}#^frame=${el.id}]]`;
+            frameLink = `- [[${fileName}#^frame=${el.id}|${el.name}]]<br>[![[${fileName}#^frame=${el.id}]]](${fileName}#^frame=${el.id})`;
         } else {
-            frameLink = `- ⏩[[${fileName}#^frame=${el.id}|${el.name}]]`;
+            frameLink = `- [[${fileName}#^frame=${el.id}|${el.name}]]`;
         }
         frameLinks.push(frameLink);
     }

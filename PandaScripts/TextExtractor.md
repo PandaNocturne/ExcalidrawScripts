@@ -43,6 +43,55 @@ if (!fs.existsSync(textCachePath)) {
 	console.log('配置路径已存在');
 }
 
+// //! 若无选中项目，则进行编号
+// const selectedElements = ea.getViewSelectedElements();
+// if (selectedElements.length === 0) {
+// 	bulletedNumberIndex = window.bulletedNumberIndex ? window.bulletedNumberIndex : 1;
+// 	const appState = ea.getExcalidrawAPI().getAppState();
+// 	if (appState) {
+// 		for (s in appState) {
+// 			if (s.startsWith("currentItem")) {
+// 				ea.style[`${s.charAt(11).toLowerCase() + s.slice(12)}`] = appState[s];
+// 				// console.log(`${s}: ${ea.style[s]}`)
+// 			}
+// 		}
+// 	}
+// 	// 字体设置
+// 	// ea.style.fillStyle = 'solid';
+// 	ea.style.strokeColor = '#1e1e1e';
+
+// 	// 最好选用3号等宽字体
+// 	ea.style.fontFamily = 3;
+
+// 	// 边框设置
+// 	ea.style.roughness = 0;
+// 	ea.style.strokeWidth = 1;
+
+// 	const { width, height } = ea.measureText(`${bulletedNumberIndex}`);
+// 	const maxSize = Math.max(width, height) + 2;
+// 	const padding = maxSize * 0.5;
+
+// 	const id = ea.addText(0, 0, `${bulletedNumberIndex}`, {
+// 		width: maxSize,
+// 		height: maxSize,
+// 		box: "ellipse",
+// 		wrapAt: 0,
+// 		boxPadding: padding,
+// 		textAlign: "center",
+// 		textVerticalAlign: "middle",
+// 		boxStrokeColor: "black",
+// 		boxPadding: 2
+// 	});
+// 	const box = ea.getElement(id);
+// 	const colorList = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93"];
+// 	box.backgroundColor = colorList[(bulletedNumberIndex - 1) % colorList.length];
+// 	box.width = maxSize + 2 * padding;
+// 	box.height = maxSize + 2 * padding;
+// 	window.bulletedNumberIndex += 1;
+// 	ea.addElementsToView(true, false, true);
+// 	return;
+// }
+
 // !添加ocrText属性
 await app.fileManager.processFrontMatter(Activefile, fm => {
 	if (typeof fm[`ocrText`] !== 'object') fm[`ocrText`] = {};
@@ -89,7 +138,7 @@ if (selectedFrameElements.length === 1) {
 	const el = ea.getElements()[0];
 	let exText = el.name;
 	const { insertType, ocrTextEdit } = await openEditPrompt(exText, 1);
-	const frameLink = `[[${fileName}#^frame=${el.id}|🔵${ocrTextEdit}]]`;
+	const frameLink = `[[${fileName}#^frame=${el.id}|${ocrTextEdit}]]`;
 
 	if (insertType == "copyText") {
 		copyToClipboard(frameLink);
@@ -107,7 +156,7 @@ if (selectedFrameElements.length === 1) {
 } else if ((selectedFrameElements.length >= 1)) {
 	let frameLinks = [];
 	for (el of selectedFrameElements) {
-		const frameLink = `[[${fileName}#^frame=${el.id}|🔵${el.name}]]`;
+		const frameLink = `[[${fileName}#^frame=${el.id}|${el.name}]]`;
 		frameLinks.push(frameLink);
 	}
 	copyToClipboard(frameLinks.join("\n"));
