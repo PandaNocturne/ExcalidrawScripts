@@ -1,11 +1,13 @@
 const fs = require('fs');
+const activefile = app.workspace.getActiveFile();
 let settings = ea.getScriptSettings();
 // 加载默认值
 if (!settings["动态Kanban.md的路径"]) {
+
     settings = {
         "动态Kanban.md的路径": {
-            value: "Excalidraw/Excalidraw.kanban.md",
-            description: "用于存放Frame的Kanban文件的存储路径<br>ob的路径，如：Excalidraw/Excalidraw.kanban.md"
+            value: "Excalidraw/Excalidraw.Kanban.md",
+            description: "用于存放Frame的Kanban文件的存储路径<br>ob的路径，如：Excalidraw/Excalidraw.Kanban.md"
         },
         "Kanban的宽度": {
             value: 340,
@@ -19,9 +21,12 @@ if (!settings["动态Kanban.md的路径"]) {
     ea.setScriptSettings(settings);
 }
 const kanbanFilePath = settings["动态Kanban.md的路径"].value;
+const KanbanPath = app.vault.getAbstractFileByPath(kanbanFilePath);
+const kanbanFullPath = app.vault.adapter.getFullPath(kanbanFilePath);
+
 const KanbanLaneWidth = settings["Kanban的宽度"].value;
 
-await ea.addElementsToView(); //to ensure all images are saved into the file
+await ea.addElementsToView();
 const frameElements = ea.getViewElements().filter(el => el.type === "frame");
 const fileName = app.workspace.getActiveFile().name;
 const choices = ["生成Frame卡片(有缩略图)", "生成Frame大纲(无缩略图)", "对Frame进行排序", "打开Kanban文件"];
@@ -33,21 +38,21 @@ if (typeof choice === "undefined") {
 
 // ! open打开形式
 if (choice === choices[3]) {
-    const KanbanFullPath = app.vault.getAbstractFileByPath(kanbanFilePath);
+
     const choices = ["新标签页", "垂直标签页", "水平标签页", "悬浮标签页，需要安装Hover插件"];
     const choice = await utils.suggester(choices, choices, "是否生成缩略图或者排序");
     if (choice === choices[0]) {
         // app.workspace.activeLeaf.openFile(KanbanFullPath);
-        app.workspace.getLeaf("tab").openFile(KanbanFullPath);
+        app.workspace.getLeaf("tab").openFile(KanbanPath);
     } else if (choice === choices[1]) {
-        app.workspace.getLeaf('split', 'vertical').openFile(KanbanFullPath);
+        app.workspace.getLeaf('split', 'vertical').openFile(KanbanPath);
 
     } else if (choice === choices[2]) {
-        app.workspace.getLeaf('split', 'horizontal').openFile(KanbanFullPath);
+        app.workspace.getLeaf('split', 'horizontal').openFile(KanbanPath);
 
     } else if (choice === choices[3]) {
         let newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(undefined, () => this.app.workspace.setActiveLeaf(newLeaf, false, true));
-        newLeaf.openFile(KanbanFullPath);
+        newLeaf.openFile(KanbanPath);
     }
     return;
 }
@@ -55,17 +60,24 @@ if (choice === choices[3]) {
 
 // ! 依据看板(kanban)顺序来排序
 if (choice === choices[2]) {
-    // 获取库的基本路径
-    const kanbanFullPath = app.vault.adapter.getFullPath(kanbanFilePath);
-    console.log(kanbanFullPath);
 
-    // 处理
+
     const updatedElements = await processFile(frameElements, kanbanFullPath, fileName);
-    console.log(updatedElements);
 
     let markdownFile = app.vault.getAbstractFileByPath(kanbanFilePath);
     if (markdownFile) app.vault.modify(markdownFile, updatedElements.join("\n"));
     new Notice(`♻FrameKanban已排序`, 3000);
+
+    // ! 给aliaes添加所有Frame的名称
+    const allFrameElements = ea.getViewElements().filter(el => el.type === "frame");
+    await app.fileManager.processFrontMatter(activefile, fm => {
+        fm.aliases = [];
+        for (el of allFrameElements) {
+            fm.aliases.push(el.name);
+        }
+    });
+    await ea.addElementsToView();
+    
     return;
 }
 
@@ -109,29 +121,30 @@ const kanbanSetting = {
 const kanbanEndText = `\n\n%% kanban:settings\n\`\`\`\n${JSON.stringify(kanbanSetting)}\n\`\`\`\n%%`;
 const extrTexts = kanbanYaml + `## [[${fileName.replace(".md", "")}]]\n\n` + frameLinks.join("\n") + kanbanEndText;
 
-let markdownFile = app.vault.getAbstractFileByPath(kanbanFilePath);
-
-if (markdownFile) {
-    app.vault.modify(markdownFile, extrTexts);
+if (KanbanPath) {
+    app.vault.modify(KanbanPath, extrTexts);
 } else {
     file = await app.vault.create(kanbanFilePath, extrTexts);
 }
 
-if (choice === true) {
+if (choice === choices[0]) {
     new Notice(`🖼FrameKanban已刷新`, 3000);
 } else {
     new Notice(`⏩FrameKanban已刷新`, 3000);
 }
 return;
+
 // 排序
 async function processFile(allFrameEls, frameKanbanFullPath, fileName) {
     try {
         const data = await fs.promises.readFile(frameKanbanFullPath, 'utf8');
         const lines = data.split('\n');
         const updatedElements = [];
+
         const regex = new RegExp(`\\[\\[${fileName}\\#(\\^frame).*\\]\\]`);;
         let j = 0;
         for (let i = 0; i < lines.length; i++) {
+
             if (regex.test(lines[i])) {
                 // 匹配对应的Excalidraw链接
                 let regex = /^-\s.*?\[\[(.*?\.md)#\^(\w+)=([a-zA-Z0-9-_]+)\|?(.*?)\]\].*/;
@@ -149,9 +162,7 @@ async function processFile(allFrameEls, frameKanbanFullPath, fileName) {
                         console.log(selectedEl.name);
                         elText = `Frame${j < 10 ? 0 : ""}${j}_${elText.replace(/Frame\d+_/, "")}`;
                         selectedEl.name = elText;
-                        ea.copyViewElementsToEAforEditing([selectedEl]);
-                        console.log(selectedEl.name);
-                        await ea.addElementsToView(false, false);
+                        ea.addElementsToView();
                         lines[i] = lines[i].replace(/(^-\s.*?\[\[.*?\.md#\^\w+=[a-zA-Z0-9-_]+\|?)(.*?)(\]\].*)/, `$1${elText}$3`);
                     }
                 }

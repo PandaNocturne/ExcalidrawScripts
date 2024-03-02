@@ -14,19 +14,19 @@ if (!settings["ocrModel2"]) {
 		"ocrModel2": {
 			value: "Paddleocr",
 			valueset: ["Paddleocr", "TextExtractor", "无"],
-			description: "选择OCR模型，有本地的Paddleocr(需要本地文件)、Obsidian的Text Extractor插件API",
+			description: "选择 OCR 模型，有本地的 Paddleocr(需要本地文件)、Obsidian 的 Text Extractor 插件 API",
 		},
 		"PaddleocrPath": {
 			value: ".obsidian/paddlleocr/PaddleocrToJson.py",
-			description: "选择paddlleocr文件夹路径下的PaddleocrToJson.py文件"
+			description: "选择 paddlleocr 文件夹路径下的 PaddleocrToJson.py 文件"
 		},
 		"TextCache": {
 			value: false,
-			description: "是否存储文本数据到JSON文件中，如果图片已经编辑过后，会保留编辑后的数据，防止二次编辑"
+			description: "是否存储文本数据到 JSON 文件中，如果图片已经编辑过后，会保留编辑后的数据，防止二次编辑"
 		},
 		"TextCachePath": {
 			value: "",
-			description: "如果开启TextCache，请选择图片OCR的文本数据存储位置(相对于库的文件夹路径)"
+			description: "如果开启 TextCache，请选择图片 OCR 的文本数据存储位置(相对于库的文件夹路径)"
 		}
 	};
 	ea.setScriptSettings(settings);
@@ -43,63 +43,14 @@ if (!fs.existsSync(textCachePath)) {
 	console.log('配置路径已存在');
 }
 
-// //! 若无选中项目，则进行编号
-// const selectedElements = ea.getViewSelectedElements();
-// if (selectedElements.length === 0) {
-// 	bulletedNumberIndex = window.bulletedNumberIndex ? window.bulletedNumberIndex : 1;
-// 	const appState = ea.getExcalidrawAPI().getAppState();
-// 	if (appState) {
-// 		for (s in appState) {
-// 			if (s.startsWith("currentItem")) {
-// 				ea.style[`${s.charAt(11).toLowerCase() + s.slice(12)}`] = appState[s];
-// 				// console.log(`${s}: ${ea.style[s]}`)
-// 			}
-// 		}
-// 	}
-// 	// 字体设置
-// 	// ea.style.fillStyle = 'solid';
-// 	ea.style.strokeColor = '#1e1e1e';
-
-// 	// 最好选用3号等宽字体
-// 	ea.style.fontFamily = 3;
-
-// 	// 边框设置
-// 	ea.style.roughness = 0;
-// 	ea.style.strokeWidth = 1;
-
-// 	const { width, height } = ea.measureText(`${bulletedNumberIndex}`);
-// 	const maxSize = Math.max(width, height) + 2;
-// 	const padding = maxSize * 0.5;
-
-// 	const id = ea.addText(0, 0, `${bulletedNumberIndex}`, {
-// 		width: maxSize,
-// 		height: maxSize,
-// 		box: "ellipse",
-// 		wrapAt: 0,
-// 		boxPadding: padding,
-// 		textAlign: "center",
-// 		textVerticalAlign: "middle",
-// 		boxStrokeColor: "black",
-// 		boxPadding: 2
-// 	});
-// 	const box = ea.getElement(id);
-// 	const colorList = ["#FF595E", "#FFCA3A", "#8AC926", "#1982C4", "#6A4C93"];
-// 	box.backgroundColor = colorList[(bulletedNumberIndex - 1) % colorList.length];
-// 	box.width = maxSize + 2 * padding;
-// 	box.height = maxSize + 2 * padding;
-// 	window.bulletedNumberIndex += 1;
-// 	ea.addElementsToView(true, false, true);
-// 	return;
-// }
-
-// !添加ocrText属性
+// !添加 ocrText 属性
 await app.fileManager.processFrontMatter(Activefile, fm => {
 	if (typeof fm[`ocrText`] !== 'object') fm[`ocrText`] = {};
 });
 
-console.log("写入Yaml");
+console.log("写入 Yaml");
 
-// ! text类型
+// ! text 类型
 const selectedTextElements = ea.getViewSelectedElements().filter(el => el.type === "text");
 
 if (selectedTextElements.length === 1) {
@@ -128,14 +79,13 @@ if (selectedTextElements.length === 1) {
 		ea.selectElementsInView(containers);
 	}
 	return;
+
 }
 
-// ! frame类型
+// ! frame 类型
 const selectedFrameElements = ea.getViewSelectedElements().filter(el => el.type === "frame");
-
 if (selectedFrameElements.length === 1) {
-	ea.copyViewElementsToEAforEditing(selectedFrameElements);
-	const el = ea.getElements()[0];
+	const el = selectedFrameElements[0];
 	let exText = el.name;
 	const { insertType, ocrTextEdit } = await openEditPrompt(exText, 1);
 	const frameLink = `[[${fileName}#^frame=${el.id}|${ocrTextEdit}]]`;
@@ -150,21 +100,33 @@ if (selectedFrameElements.length === 1) {
 	} else {
 		el.name = ocrTextEdit;
 	}
-	ea.refreshTextElementSize(el.id);
+	ea.copyViewElementsToEAforEditing(selectedFrameElements);
 	await ea.addElementsToView(false, true);
-	return;
-} else if ((selectedFrameElements.length >= 1)) {
+} else if ((selectedFrameElements.length > 1)) {
 	let frameLinks = [];
 	for (el of selectedFrameElements) {
 		const frameLink = `[[${fileName}#^frame=${el.id}|${el.name}]]`;
 		frameLinks.push(frameLink);
 	}
 	copyToClipboard(frameLinks.join("\n"));
+	ea.copyViewElementsToEAforEditing(selectedFrameElements);
+	await ea.addElementsToView(false, true);
 	new Notice(`已复制${frameLinks}链接`, 2000);
-	return;
 }
 
-// ! 图片OCR或文本编辑
+if (selectedFrameElements.length >= 1) {
+	// ! 给aliaes添加所有Frame的名称
+	const allFrameElements = ea.getViewElements().filter(el => el.type === "frame");
+	await app.fileManager.processFrontMatter(Activefile, fm => {
+		fm.aliases = [];
+		for (el of allFrameElements) {
+			fm.aliases.push(el.name);
+		}
+	})
+	await ea.addElementsToView(); 
+}
+
+// ! 图片 OCR 或文本编辑
 const els = ea.getViewSelectedElements().filter(el => el.type === "text" || el.type === "image" || el.type === "embeddable");
 if (els.length >= 1) {
 	// 是否为批处理
@@ -308,9 +270,10 @@ if (els.length >= 1) {
 		copyToClipboard(output);
 		new Notice(`📋复制所有文本到剪切板`, 3000);
 	}
+
 }
 
-// ! 如果图片不存在则清理yaml对应的id
+// ! 如果图片不存在则清理 yaml 对应的 id
 await app.fileManager.processFrontMatter(Activefile, fm => {
 	allels = ea.getViewElements();
 	Object.keys(fm.ocrText).forEach(key => {
@@ -321,7 +284,7 @@ await app.fileManager.processFrontMatter(Activefile, fm => {
 	});
 });
 
-// 调用Text Extractor的API
+// 调用 Text Extractor 的 API
 function getTextExtractor() {
 	return app.plugins.plugins['text-extractor'].api;
 }
@@ -346,6 +309,7 @@ function processText(text) {
 	text = text.replace(/([a-zA-Z])([\u4e00-\u9fa5])/g, '$1 $2');
 
 	return text;
+
 }
 
 // 打开文本编辑器
@@ -384,6 +348,7 @@ async function openEditPrompt(ocrText, n = 10) {
 	}
 
 	return { insertType, ocrTextEdit };
+
 }
 
 // 复制内容到剪切板
@@ -400,7 +365,7 @@ function copyToClipboard(extrTexts) {
 	document.body.removeChild(txtArea);
 }
 
-// 读取Json数据文件转为对象
+// 读取 Json 数据文件转为对象
 function readJsonData(jsonPath, data) {
 	if (!fs.existsSync(jsonPath)) {
 		console.log('文件不存在');
@@ -413,7 +378,7 @@ function readJsonData(jsonPath, data) {
 	return jsonData;
 }
 
-// 获取文件路径下的md中的文本(排除Yaml)
+// 获取文件路径下的 md 中的文本(排除 Yaml)
 function getMarkdownText(filePath) {
 	// 获取文件的完整路径
 	const fileFullPath = app.vault.adapter.getFullPath(filePath);
@@ -425,17 +390,18 @@ function getMarkdownText(filePath) {
 	const markdownText = fileContent.replace(/---[\s\S]*?---/, '').replace(/\n\n/, "\n");
 
 	return markdownText;
+
 }
 
-// 由文件列表和el元素获取文件路径(相对路径)
+// 由文件列表和 el 元素获取文件路径(相对路径)
 function getFilePath(files, el) {
-	let files2 = files.filter(f => path.basename(f.path).replace(".md", "").endsWith(el.link.replace(/\[\[/, "").replace(/\|.*]]/, "").replace(/\]\]/, "").replace(".md", "")));
+	let files2 = files.filter(f => path.basename(f.path).replace(".md", "").endsWith(el.link.replace(/\[\[/, "").replace(/\|.\*]]/, "").replace(/\]\]/, "").replace(".md", "")));
 	let filePath = files2.map((f) => f.path)[0];
 	console.log(filePath);
 	return filePath;
 }
 
-// 运行本地Python文件
+// 运行本地 Python 文件
 function runPythonScript(scriptPath, args) {
 	return new Promise((resolve, reject) => {
 		const command = `python "${scriptPath}" "${args}"`;
