@@ -1,27 +1,30 @@
 const fs = require('fs');
 let settings = ea.getScriptSettings();
 // 加载默认值
-if (!settings["ExcalidrawFameKanbanPath"]) {
-
+if (!settings["动态Kanban.md的路径"]) {
     settings = {
-        "ExcalidrawFameKanbanPath": {
-            value: "Y-图形文件存储/Excalidraw/ExcalidrawFrameKanban.md",
-            description: "用于存放Frame的Kanban文件的存储路径<br>ob的路径，如：Y-图形文件存储/Excalidraw/ExcalidrawFrameKanban.md"
+        "动态Kanban.md的路径": {
+            value: "Excalidraw/Excalidraw.kanban.md",
+            description: "用于存放Frame的Kanban文件的存储路径<br>ob的路径，如：Excalidraw/Excalidraw.kanban.md"
         },
-        "FameKanbanLaneWidth": {
+        "Kanban的宽度": {
             value: 340,
             description: "Kanban的宽度，默认值为330"
+        },
+        "缩略图是否带连接": {
+            value: false,
+            description: "如带连接，则单击缩略图即可跳转"
         },
     };
     ea.setScriptSettings(settings);
 }
-const kanbanFilePath = settings["ExcalidrawFameKanbanPath"].value;
-const KanbanLaneWidth = settings["FameKanbanLaneWidth"].value;
+const kanbanFilePath = settings["动态Kanban.md的路径"].value;
+const KanbanLaneWidth = settings["Kanban的宽度"].value;
 
 await ea.addElementsToView(); //to ensure all images are saved into the file
 const frameElements = ea.getViewElements().filter(el => el.type === "frame");
 const fileName = app.workspace.getActiveFile().name;
-const choices = [true, false, "sort", "open"];
+const choices = ["生成Frame卡片(有缩略图)", "生成Frame大纲(无缩略图)", "对Frame进行排序", "打开Kanban文件"];
 
 const choice = await utils.suggester(choices, choices, "是否生成缩略图或者排序");
 if (typeof choice === "undefined") {
@@ -29,35 +32,37 @@ if (typeof choice === "undefined") {
 }
 
 // ! open打开形式
-if (choice === "open") {
-    let KanbanFullPath = app.vault.getAbstractFileByPath(kanbanFilePath);
-    const choices = ["tab", "vertical", "horizontal", "hover"];
+if (choice === choices[3]) {
+    const KanbanFullPath = app.vault.getAbstractFileByPath(kanbanFilePath);
+    const choices = ["新标签页", "垂直标签页", "水平标签页", "悬浮标签页，需要安装Hover插件"];
     const choice = await utils.suggester(choices, choices, "是否生成缩略图或者排序");
-    if (choice === "tab") {
+    if (choice === choices[0]) {
         // app.workspace.activeLeaf.openFile(KanbanFullPath);
         app.workspace.getLeaf("tab").openFile(KanbanFullPath);
-    } else if (choice === "vertical") {
+    } else if (choice === choices[1]) {
         app.workspace.getLeaf('split', 'vertical').openFile(KanbanFullPath);
 
-    } else if (choice === "horizontal") {
+    } else if (choice === choices[2]) {
         app.workspace.getLeaf('split', 'horizontal').openFile(KanbanFullPath);
 
-    } else if (choice === "hover") {
+    } else if (choice === choices[3]) {
         let newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(undefined, () => this.app.workspace.setActiveLeaf(newLeaf, false, true));
         newLeaf.openFile(KanbanFullPath);
     }
-
     return;
 }
 
 
 // ! 依据看板(kanban)顺序来排序
-if (choice === "sort") {
+if (choice === choices[2]) {
     // 获取库的基本路径
-    const basePath = (app.vault.adapter).getBasePath();
-    const frameKanbanFullPath = `${basePath}/${kanbanFilePath}`;
+    const kanbanFullPath = app.vault.adapter.getFullPath(kanbanFilePath);
+    console.log(kanbanFullPath);
+
     // 处理
-    const updatedElements = await processFile(frameElements, frameKanbanFullPath, fileName);
+    const updatedElements = await processFile(frameElements, kanbanFullPath, fileName);
+    console.log(updatedElements);
+
     let markdownFile = app.vault.getAbstractFileByPath(kanbanFilePath);
     if (markdownFile) app.vault.modify(markdownFile, updatedElements.join("\n"));
     new Notice(`♻FrameKanban已排序`, 3000);
@@ -80,12 +85,14 @@ if (frameElements.length >= 1) {
 
     for (let el of frameElements) {
         let frameLink;
-        // !
-        if (choice === true) {
-            // frameLink = `- [[${fileName}#^frame=${el.id}|${el.name}]]<br>![[${fileName}#^frame=${el.id}]]`;
-            frameLink = `- [[${fileName}#^frame=${el.id}|${el.name}]]<br>[![[${fileName}#^frame=${el.id}]]](${fileName}#^frame=${el.id})`;
-        } else {
-            frameLink = `- [[${fileName}#^frame=${el.id}|${el.name}]]`;
+        if (choice === choices[0]) {
+            if (settings["缩略图是否带连接"].value) {
+                frameLink = `- [ ] [[${fileName}#^frame=${el.id}|${el.name}]]<br>[![[${fileName}#^frame=${el.id}]]](${fileName}#^frame=${el.id})`;
+            } else {
+                frameLink = `- [ ] [[${fileName}#^frame=${el.id}|${el.name}]]<br>![[${fileName}#^frame=${el.id}]]`;
+            }
+        } else if (choice === choices[1]) {
+            frameLink = `- [ ] [[${fileName}#^frame=${el.id}|${el.name}]]`;
         }
         frameLinks.push(frameLink);
     }
@@ -100,7 +107,7 @@ const kanbanSetting = {
 };
 
 const kanbanEndText = `\n\n%% kanban:settings\n\`\`\`\n${JSON.stringify(kanbanSetting)}\n\`\`\`\n%%`;
-const extrTexts = kanbanYaml + `## [[${fileName}]]\n\n` + frameLinks.join("\n") + kanbanEndText;
+const extrTexts = kanbanYaml + `## [[${fileName.replace(".md", "")}]]\n\n` + frameLinks.join("\n") + kanbanEndText;
 
 let markdownFile = app.vault.getAbstractFileByPath(kanbanFilePath);
 
@@ -115,20 +122,16 @@ if (choice === true) {
 } else {
     new Notice(`⏩FrameKanban已刷新`, 3000);
 }
-
 return;
-
 // 排序
 async function processFile(allFrameEls, frameKanbanFullPath, fileName) {
     try {
         const data = await fs.promises.readFile(frameKanbanFullPath, 'utf8');
         const lines = data.split('\n');
         const updatedElements = [];
-
-        const regex = new RegExp(`${fileName}#`);
+        const regex = new RegExp(`\\[\\[${fileName}\\#(\\^frame).*\\]\\]`);;
         let j = 0;
         for (let i = 0; i < lines.length; i++) {
-
             if (regex.test(lines[i])) {
                 // 匹配对应的Excalidraw链接
                 let regex = /^-\s.*?\[\[(.*?\.md)#\^(\w+)=([a-zA-Z0-9-_]+)\|?(.*?)\]\].*/;
@@ -146,7 +149,9 @@ async function processFile(allFrameEls, frameKanbanFullPath, fileName) {
                         console.log(selectedEl.name);
                         elText = `Frame${j < 10 ? 0 : ""}${j}_${elText.replace(/Frame\d+_/, "")}`;
                         selectedEl.name = elText;
-                        ea.addElementsToView();
+                        ea.copyViewElementsToEAforEditing([selectedEl]);
+                        console.log(selectedEl.name);
+                        await ea.addElementsToView(false, false);
                         lines[i] = lines[i].replace(/(^-\s.*?\[\[.*?\.md#\^\w+=[a-zA-Z0-9-_]+\|?)(.*?)(\]\].*)/, `$1${elText}$3`);
                     }
                 }
