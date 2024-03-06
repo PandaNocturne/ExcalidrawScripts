@@ -94,21 +94,22 @@ el.ondrop = async function (event) {
 
 		zotero_txt = match_zotero_txt(insert_txt);
 		zotero_author = match_zotero_author(insert_txt);
+		zotero_link = match_zotero_link(insert_txt);
 		if (zotero_author) {
-			zotero_author = `\n(${zotero_author})`;
+			zotero_author = `\n[(${zotero_author})](${zotero_link})`;
 		};
 		zotero_comment = match_zotero_comment(insert_txt);
 		if (zotero_comment) {
 			zotero_comment = `\n\n${zotero_comment}`;
 		};
-		zotero_link = match_zotero_link(insert_txt);
 
 		if (zotero_txt) {
 			console.log("ZoteroText");
-
-			let id = await ea.addText(0, 0, `${zotero_txt}${zotero_author}${zotero_comment}`, { width: 600, box: true, wrapAt: 90, textAlign: "left", textVerticalAlign: "middle", box: "box" });
+			const totalText = `${zotero_txt}${zotero_comment}`;
+			let width = totalText.length > 30 ? 600 : totalText.length * 20;
+			let id = await ea.addText(0, 0, `${zotero_txt}${zotero_author}${zotero_comment}`, { width: width, box: true, wrapAt:99, textAlign: "left", textVerticalAlign: "middle", box: "box" });
 			let el = ea.getElement(id);
-			el.link = zotero_link;
+			// el.link = zotero_link;
 			await ea.addElementsToView(true, true, false);
 			if (ea.targetView.draginfoDiv) {
 				document.body.removeChild(ea.targetView.draginfoDiv);
@@ -148,7 +149,8 @@ el.ondrop = async function (event) {
 		// 格式化文本(去空格、全角转半角)  
 		insert_txt = processText(insert_txt);
 		console.log("文本格式化");
-		await ea.addText(0, 0, `${insert_txt} `, { width: 400, box: true, wrapAt: 90, textAlign: "left", textVerticalAlign: "middle", box: "box" });
+		let width = insert_txt.length > 30 ? 600 : insert_txt.length * 15;
+		await ea.addText(0, 0, `${insert_txt} `, { width: width, box: true, wrapAt: 90, textAlign: "left", textVerticalAlign: "middle", box: "box" });
 		// let el = ea.getElement(id);
 		await ea.addElementsToView(true, true, false);
 		if (ea.targetView.draginfoDiv) {
