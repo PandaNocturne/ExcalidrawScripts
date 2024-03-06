@@ -264,7 +264,7 @@ if (els.length >= 1) {
 
 	if (batchRecognition) {
 		// 如果批量识别则直接进行复制文本
-		const output = allText.join("\n");
+		const output = allText.join("\n\n");
 		console.log(output);
 		new Notice(`✅已完成批量OCR`, 3000);
 		copyToClipboard(output);
