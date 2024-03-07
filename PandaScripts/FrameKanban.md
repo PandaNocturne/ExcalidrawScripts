@@ -24,13 +24,11 @@ const kanbanFilePath = settings["动态Kanban.md的路径"].value;
 const KanbanPath = app.vault.getAbstractFileByPath(kanbanFilePath);
 const kanbanFullPath = app.vault.adapter.getFullPath(kanbanFilePath);
 
-const KanbanLaneWidth = settings["Kanban的宽度"].value;
-
 await ea.addElementsToView();
 
 const frameElements = ea.getViewElements().filter(el => el.type === "frame");
 const fileName = app.workspace.getActiveFile().name;
-const choices = ["生成Frame卡片(有缩略图)", "生成Frame大纲(无缩略图)", "对Frame进行排序", "打开Kanban文件"];
+const choices = ["生成Frame卡片(有缩略图)", "生成Frame大纲(无缩略图)", "对Frame进行排序", "打开Kanban文件", "重设Kanban宽度"];
 
 // // ! 如果选择了一个或多个frame元素，则不弹出选项框，直接诶生成生成Frame大纲
 // const selectedTextElements = ea.getViewSelectedElements().filter(el => el.type === "frame");
@@ -48,9 +46,17 @@ if (typeof choice === "undefined") {
     return; // 退出函数或程序
 }
 
+// ! 设置看板宽度
+let kanbanWidth = settings["Kanban的宽度"].value;
+if (choice === choices[4]) {
+    kanbanWidth = await utils.inputPrompt("请设置看板宽度", "请设置看板宽度。注意为数值型", kanbanWidth,1);
+    settings["Kanban的宽度"].value = kanbanWidth;
+    ea.setScriptSettings(settings);
+    choice = choices[1];
+}
+
 // ! open打开形式
 if (choice === choices[3]) {
-
     const choices = ["新标签页", "垂直标签页", "水平标签页", "悬浮标签页，需要安装Hover插件"];
     const choice = await utils.suggester(choices, choices, "是否生成缩略图或者排序");
     if (choice === choices[0]) {
@@ -125,7 +131,7 @@ const kanbanYaml = "---\n\nkanban-plugin: basic\n\n---\n\n";
 
 const kanbanSetting = {
     "kanban-plugin": "basic",
-    "lane-width": KanbanLaneWidth,
+    "lane-width": kanbanWidth,
     "show-checkboxes": false,
     "archive-with-date": false
 };
