@@ -73,8 +73,8 @@ eaApi.onPasteHook = async function ({ ea,
         ea.style.fontSize = 20;
 
         // 匹配外部回链对应的信息
-        const { nb, book, uuid } = matchBookxnoteProRegex(backlink);
-        console.log({ nb, book, uuid });
+        const { nb, book, page, uuid } = matchBookxnoteProRegex(backlink);
+        console.log({ nb, book, page, uuid });
 
         // 通过nb找到对应的书本信息
         const notebooks = findNotebooksById(notebooksJson, nb);
@@ -114,7 +114,7 @@ eaApi.onPasteHook = async function ({ ea,
 
             let id = await ea.addImage(0, 0, imgName);
             let el = ea.getElement(id);
-            el.link = backlink;
+            el.link = `[${notebooks.entry}(P${page})](${backlink})`;
             ea.setView("active");
             await ea.addElementsToView(true, false, false);
         } else if (markupData?.originaltext) {
@@ -134,10 +134,14 @@ eaApi.onPasteHook = async function ({ ea,
             }
 
             const markupText = processText(markupData.originaltext);
+            const content = markupData.content ?  `\n${markupData.content}`: "";
+
             console.log(markupText);
-            let id = await ea.addText(0, 0, `${markupText}`, { width: 600, box: true, wrapAt: 90, textAlign: "left", textVerticalAlign: "middle", box: "box" });
+            const totalText = `${markupText}`;
+            let width = totalText.length > 30 ? 600 : totalText.length * 20;
+            let id = await ea.addText(0, 0, `${markupText} ([P${page}](${backlink}))${content}`, { width: width, box: true, wrapAt: 99, textAlign: "left", textVerticalAlign: "middle", box: "box" });
             let el = ea.getElement(id);
-            el.link = backlink;
+            // el.link = backlink;
             ea.setView("active");
             await ea.addElementsToView(true, false, false);
         } else {
@@ -150,19 +154,19 @@ eaApi.onPasteHook = async function ({ ea,
 };
 
 function matchBookxnoteProRegex(backlink) {
-    const regex = /nb=({[0-9a-z\-]+})&book=([0-9a-z\-]+).*&uuid=([0-9a-z\-]+)/;
+    const regex = /nb=({[0-9a-z\-]+})&book=([0-9a-z\-]+).*&page=([0-9]+).*&uuid=([0-9a-z\-]+)/;
 
     const matches = backlink.match(regex);
     if (matches) {
         const nb = matches[1];
         const book = matches[2];
-        const uuid = matches[3];
-        return { nb, book, uuid };
+        const page = matches[3];
+        const uuid = matches[4];
+        return { nb, book, page, uuid };
     } else {
         return null;
     }
 }
-
 function findNotebooksById(obj, id) {
     if (obj.notebooks && obj.notebooks.length > 0) {
         for (let i = 0; i < obj.notebooks.length; i++) {

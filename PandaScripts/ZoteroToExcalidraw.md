@@ -96,7 +96,7 @@ el.ondrop = async function (event) {
 		zotero_author = match_zotero_author(insert_txt);
 		zotero_link = match_zotero_link(insert_txt);
 		if (zotero_author) {
-			zotero_author = `\n[(${zotero_author})](${zotero_link})`;
+			zotero_author = `[(${zotero_author})](${zotero_link})`;
 		};
 		zotero_comment = match_zotero_comment(insert_txt);
 		if (zotero_comment) {
@@ -133,7 +133,7 @@ el.ondrop = async function (event) {
 
 			let id = await ea.addImage(0, 0, zotero_image_name);
 			let el = ea.getElement(id);
-			el.link = zotero_link;
+			el.link = zotero_author;
 
 			await ea.addElementsToView(true, true, false);
 			if (ea.targetView.draginfoDiv) {
