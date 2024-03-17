@@ -387,7 +387,7 @@ function getMarkdownText(filePath) {
 	const fileContent = fs.readFileSync(fileFullPath, 'utf8');
 
 	// 排除首行YAML区域
-	const markdownText = fileContent.replace(/---[\s\S]*?---/, '').replace(/\n\n/, "\n");
+	const markdownText = fileContent.replace(/---[\s\S]*?---\n*/, '').replace(/\n\n/, "\n");
 
 	return markdownText;
 

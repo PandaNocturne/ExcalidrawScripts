@@ -1,6 +1,6 @@
 const frameElements = ea.getViewElements().filter(el => el.type === "frame");
 const choices = frameElements.map(el => el.name);
-choices.sort((a, b) => a.localeCompare(b, 'zh'));
+choices.sort();
 
 let choice = "";
 choice = await utils.suggester(choices, choices, "请选择要跳转的大纲");

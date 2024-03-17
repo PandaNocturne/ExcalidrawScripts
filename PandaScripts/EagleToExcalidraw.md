@@ -53,7 +53,6 @@ el.ondrop = async function (event) {
                 event.stopPropagation();
                 ea.clear();
                 ea.style.strokeStyle = "solid";
-                ea.style.backgroundColor = "#ffec99";
                 ea.style.fillStyle = 'solid';
                 ea.style.roughness = 0;
                 // ea.style.roundness = { type: 3 };
@@ -138,10 +137,12 @@ el.ondrop = async function (event) {
 
                         if (metadata.url) {
                             // 将el.link的值设置为metadata.json中的url
-                            el.link = metadata.url;
+                            // el.link = metadata.url;
+                            el.link = `[${insertFilename}](${metadata.url})`;
+
                         } else {
                             // 将el.link的值设置为Eagle的回链
-                            el.link = ``;
+                            el.link =  `eagle://item/${eagleId}`;
                         }
 
                         await ea.addElementsToView(true, false, false);
