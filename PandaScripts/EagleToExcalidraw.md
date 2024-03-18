@@ -22,7 +22,7 @@ const relativePath = settings["Eagle Images Path"].value;
 
 // 对于选中的项目，则通过文件名来创建Eagle的回链并打开
 
-let selectedEls = ea.getViewSelectedElements()
+let selectedEls = ea.getViewSelectedElements();
 
 for (selectedEl of selectedEls) {
     let embeddedFile = ea.targetView.excalidrawData.getFile(selectedEl.fileId);
@@ -61,21 +61,21 @@ el.ondrop = async function (event) {
                 ea.style.fontSize = 20;
 
                 // 判断是否为Eagle文件，不是这不执行
-				let folderPathName = path.basename(path.dirname(directoryPath));
-				console.log(folderPathName);
-				
-                console.log(folderPathName)
+                let folderPathName = path.basename(path.dirname(directoryPath));
+                console.log(folderPathName);
+
+                console.log(folderPathName);
                 if (!folderPathName.match(".info")) {
                     console.log("不为Eagle文件夹文件");
                     continue;
                 }
-                console.log("为Eagle文件夹文件");                
+                console.log("为Eagle文件夹文件");
 
                 let fileName = path.basename(directoryPath);
                 if (folderPathName && fileName) {
-					let eagleId = folderPathName.replace('.info', '');
-                    console.log(eagleId)
-                    console.log(`folder: ${folderPathName};file_name:${fileName};eagle_id:${eagleId}`);                   
+                    let eagleId = folderPathName.replace('.info', '');
+                    console.log(eagleId);
+                    console.log(`folder: ${folderPathName};file_name:${fileName};eagle_id:${eagleId}`);
 
                     // 获取原文件名，不带后缀
                     let insertFilename = fileName.split(".").slice(0, -1).join(".");
@@ -89,7 +89,7 @@ el.ondrop = async function (event) {
                     // 📌定义附件保存的地址
                     let destinationName = `${eagleId}.${fileExtension}`;
                     let destinationPath = `${basePath}/${relativePath}/${destinationName}`;
-                    console.log(destinationPath)
+                    console.log(destinationPath);
                     // 读取metadata.json文件
                     let Eaglefolder = path.dirname(directoryPath);
                     const metadataPath = `${Eaglefolder}/metadata.json`; // 替换为实际的文件路径
@@ -139,10 +139,9 @@ el.ondrop = async function (event) {
                             // 将el.link的值设置为metadata.json中的url
                             // el.link = metadata.url;
                             el.link = `[${insertFilename}](${metadata.url})`;
-
                         } else {
                             // 将el.link的值设置为Eagle的回链
-                            el.link =  `eagle://item/${eagleId}`;
+                            el.link = `eagle://item/${eagleId}`;
                         }
 
                         await ea.addElementsToView(true, false, false);
@@ -177,20 +176,18 @@ el.ondrop = async function (event) {
                         fileName.toLowerCase().endsWith(".pdf")
                     ) {
                         let InsertPDFImage = confirm("是否插入附件缩略图？");
-
+                        let id = "";
                         if (InsertPDFImage) {
                             let destinationPath = `${basePath}/${relativePath}/${eagleId}.png`;
-                            fs.copyFileSync(ThumbnailImage, destinationPath)
+                            fs.copyFileSync(ThumbnailImage, destinationPath);
                             await new Promise((resolve) => setTimeout(resolve, 200)); // 暂停一会儿
-                            let id = await ea.addImage(0, 0, `${eagleId}.png`);
+                            id = await ea.addImage(0, 0, `${eagleId}.png`);
 
                         } else {
-                            let id = await ea.addText(0, 0, `[[${destinationName}|${insert_txt}]]`, { width: 400, box: true, wrapAt: 100, textAlign: "center", textVerticalAlign: "middle", box: "box" });
+                            id = await ea.addText(0, 0, `[[${destinationName}|${insert_txt}]]`, { width: 400, box: true, wrapAt: 100, textAlign: "center", textVerticalAlign: "middle", box: "box" });
                         }
-
-
                         let el = ea.getElement(id);
-                        el.link = `[[${destinationName}]]`;
+                        el.link = `[[${destinationName}|${insert_txt}]]`;
 
                         await ea.addElementsToView(true, false, false);
                         if (ea.targetView.draginfoDiv) {
