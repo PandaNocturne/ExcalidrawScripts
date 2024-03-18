@@ -47,16 +47,7 @@ if (settings["Zotero Annotations Color"].value) {
 }
 
 // 设定一些样式
-ea.clear();
-ea.style.strokeStyle = "solid";
-ea.style.fillStyle = 'solid';
-ea.style.roughness = 0;
-ea.style.backgroundColor = "transparent";
-ea.style.strokeColor = "#1e1e1e";
-// ea.style.roundness = { type: 3 }; // 圆角
-ea.style.strokeWidth = 2;
-ea.style.fontFamily = 4;
-ea.style.fontSize = 20;
+
 
 el.ondrop = async function (event) {
 	console.log("ondrop");
@@ -70,7 +61,7 @@ el.ondrop = async function (event) {
 		insert_txt = processText(insert_txt);
 		// 清空原本投入的文本
 		event.stopPropagation();
-		processZoteroData(insert_txt);
+		processZoteroData(ea,insert_txt)
 
 	} else if (ondropType < 1) {
 		// 清空原本投入的文本
@@ -103,11 +94,21 @@ eaApi.onPasteHook = async function ({ ea, payload, event, excalidrawFile, view, 
 		payload.text = "";
 		insert_txt = processText(inputText);
 		event.stopPropagation();
-		processZoteroData(insert_txt);
+		processZoteroData(ea,insert_txt)
 	}
 };
 
-async function processZoteroData(insert_txt) {
+async function processZoteroData(ea,insert_txt) {
+	ea.clear();
+	ea.style.strokeStyle = "solid";
+	ea.style.fillStyle = 'solid';
+	ea.style.roughness = 0;
+	ea.style.backgroundColor = "transparent";
+	ea.style.strokeColor = "#1e1e1e";
+	// ea.style.roundness = { type: 3 }; // 圆角
+	ea.style.strokeWidth = 2;
+	ea.style.fontFamily = 4;
+	ea.style.fontSize = 20;
 	console.log("Zotero");
 	let zotero_color = match_zotero_color(insert_txt);
 	if (zotero_color) {
@@ -149,6 +150,10 @@ async function processZoteroData(insert_txt) {
 		let el = ea.getElement(id);
 		ea.setView("active");
 		await ea.addElementsToView(true, true, false);
+		if (ea.targetView.draginfoDiv) {
+			document.body.removeChild(ea.targetView.draginfoDiv);
+			delete ea.targetView.draginfoDiv;
+		};
 	} else {
 		console.log("ZoteroImage");
 		let zotero_image = match_zotero_image(insert_txt);
@@ -168,6 +173,10 @@ async function processZoteroData(insert_txt) {
 		el.link = zotero_author;
 		ea.setView("active");
 		await ea.addElementsToView(true, true, false);
+		if (ea.targetView.draginfoDiv) {
+			document.body.removeChild(ea.targetView.draginfoDiv);
+			delete ea.targetView.draginfoDiv;
+		};
 	}
 }
 
