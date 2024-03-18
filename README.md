@@ -8,6 +8,12 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/README.
 ```
 ````
 
+即检测本文档更新：
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/README.md
+```
+
+---
 脚本安装可以根据源码来安装，也可以通过 Excalidraw 插件提供的脚本安装代码块来安装
 
 - 代码块链接方法：
