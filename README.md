@@ -12,8 +12,8 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/README.
 
 ![PixPin_2024-03-18_19-36-49](https://github.com/PandaNocturne/ExcalidrawScripts/assets/84729049/00945ee2-066f-46c3-bc69-b56c4fc29c92)
 
-
 ---
+
 脚本安装可以根据源码来安装，也可以通过 Excalidraw 插件提供的脚本安装代码块来安装
 
 - 代码块链接方法：

@@ -95,9 +95,12 @@ el.ondrop = async function (event) {
 		zotero_txt = match_zotero_txt(insert_txt);
 		zotero_author = match_zotero_author(insert_txt);
 		zotero_link = match_zotero_link(insert_txt);
+		// alert(zotero_link)
 		if (zotero_author) {
 			zotero_author = `[(${zotero_author})](${zotero_link})`;
-		};
+		} else {
+			zotero_author = `[📍](${zotero_link})`;
+		}
 		zotero_comment = match_zotero_comment(insert_txt);
 		if (zotero_comment) {
 			zotero_comment = `\n\n${zotero_comment}`;
@@ -107,7 +110,7 @@ el.ondrop = async function (event) {
 			console.log("ZoteroText");
 			const totalText = `${zotero_txt}${zotero_comment}`;
 			let width = totalText.length > 30 ? 600 : totalText.length * 20;
-			let id = await ea.addText(0, 0, `${zotero_txt}${zotero_author}${zotero_comment}`, { width: width, box: true, wrapAt:99, textAlign: "left", textVerticalAlign: "middle", box: "box" });
+			let id = await ea.addText(0, 0, `${zotero_txt}${zotero_author}${zotero_comment}`, { width: width, box: true, wrapAt: 99, textAlign: "left", textVerticalAlign: "middle", box: "box" });
 			let el = ea.getElement(id);
 			// el.link = zotero_link;
 			await ea.addElementsToView(true, true, false);
