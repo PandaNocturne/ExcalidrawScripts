@@ -8,10 +8,10 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/README.
 ```
 ````
 
-即检测本文档更新：
-```excalidraw-script-install
-https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/README.md
-```
+脚本的详细介绍可以如下操作：
+
+![PixPin_2024-03-18_19-36-49](https://github.com/PandaNocturne/ExcalidrawScripts/assets/84729049/00945ee2-066f-46c3-bc69-b56c4fc29c92)
+
 
 ---
 脚本安装可以根据源码来安装，也可以通过 Excalidraw 插件提供的脚本安装代码块来安装
