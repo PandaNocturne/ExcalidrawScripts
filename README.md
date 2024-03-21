@@ -1,6 +1,6 @@
 # ExcalidrawScripts
 
-熊猫别熬夜的 Excalidraw 代码片段，可通过 Excalidraw 插件的脚本代码块来安装，在 Obsidian 中会显示为按钮，脚本更新会自动检测：
+[熊猫别熬夜的 Excalidraw 代码片段](https://github.com/PandaNocturne/ExcalidrawScripts)，可通过 Excalidraw 插件的脚本代码块来安装，在 Obsidian 中会显示为按钮，脚本更新会自动检测：
 
 ````md
 ```excalidraw-script-install

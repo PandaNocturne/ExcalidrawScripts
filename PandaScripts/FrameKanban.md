@@ -49,28 +49,50 @@ if (typeof choice === "undefined") {
 // ! 设置看板宽度
 let kanbanWidth = settings["Kanban的宽度"].value;
 if (choice === choices[4]) {
-    kanbanWidth = await utils.inputPrompt("请设置看板宽度", "请设置看板宽度。注意为数值型", kanbanWidth,1);
+    kanbanWidth = await utils.inputPrompt("请设置看板宽度", "请设置看板宽度。注意为数值型", kanbanWidth, 1);
     settings["Kanban的宽度"].value = kanbanWidth;
     ea.setScriptSettings(settings);
     choice = choices[1];
 }
 
 // ! open打开形式
+const comm = str => app.commands.executeCommandById(str);
 if (choice === choices[3]) {
     const choices = ["新标签页", "垂直标签页", "水平标签页", "悬浮标签页，需要安装Hover插件"];
     const choice = await utils.suggester(choices, choices, "是否生成缩略图或者排序");
     if (choice === choices[0]) {
         // app.workspace.activeLeaf.openFile(KanbanFullPath);
         app.workspace.getLeaf("tab").openFile(KanbanPath);
+        // 2024-03-21_21:09：添加自动锁定
+        setTimeout(() => {
+            comm("workspace:toggle-pin");
+        }, 100);
     } else if (choice === choices[1]) {
         app.workspace.getLeaf('split', 'vertical').openFile(KanbanPath);
 
+
+        // 2024-03-21_20:57:41 添加自动调整界面布局宽度
+        const setPanel = percent => {
+            let right = document.querySelector('.workspace-split.mod-vertical.mod-root').lastElementChild;
+            right.previousSibling.style.flexGrow = percent;
+            right.style.flexGrow = 100 - percent;
+        };
+        setTimeout(() => {
+            setPanel(75); // 50、80
+            comm('editor:focus-right');
+            comm("workspace:toggle-pin");
+        }, 150);
     } else if (choice === choices[2]) {
         app.workspace.getLeaf('split', 'horizontal').openFile(KanbanPath);
 
     } else if (choice === choices[3]) {
         let newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(undefined, () => this.app.workspace.setActiveLeaf(newLeaf, false, true));
         newLeaf.openFile(KanbanPath);
+
+        // 2024-03-21_21:09：添加自动锁定
+        setTimeout(() => {
+            comm("workspace:toggle-pin");
+        }, 100);
     }
     return;
 }
@@ -78,8 +100,6 @@ if (choice === choices[3]) {
 
 // ! 依据看板(kanban)顺序来排序
 if (choice === choices[2]) {
-
-
     const updatedElements = await processFile(frameElements, kanbanFullPath, fileName);
 
     let markdownFile = app.vault.getAbstractFileByPath(kanbanFilePath);
