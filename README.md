@@ -1,4 +1,6 @@
-[熊猫别熬夜的 Excalidraw 代码片段](https://github.com/PandaNocturne/ExcalidrawScripts)，可通过 Excalidraw 插件的脚本代码块 (\`\`\`excalidraw-script-install) 来安装，里面放的是脚本 GitHub 的 RAW 链接，在 Obsidian 中会显示为按钮，脚本更新会自动检测：
+分享下使用 Obsidian 一年多折腾 Excalidraw 时写的 Excalidraw 脚本片段，GitHub 仓库：[熊猫别熬夜的 Excalidraw 代码片段](https://github.com/PandaNocturne/ExcalidrawScripts)，
+
+可通过 Excalidraw 插件的脚本代码块 (\`\`\`excalidraw-script-install) 来安装，里面放的是脚本 GitHub 的 RAW 链接，在 Obsidian 中会显示为按钮，脚本更新会自动检测，欢迎大家分享和反馈，脚本的详细介绍我都上传到 [PKMer](https://pkmer.cn/) 了。
 
 ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/19567489151ba3ebb307e48831a6d4e5.png)
 
@@ -8,7 +10,9 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/README.
 ```
 ````
 
-脚本的详细介绍：[Excalidraw 如何安装脚本 + 脚本设置介绍]( https://pkmer.cn/show/20231229194628 )
+> - Excalidraw 脚本的详细介绍：[Excalidraw 如何安装脚本 + 脚本设置介绍]( https://pkmer.cn/show/20231229194628 )
+> - Excalidraw 脚本开发文档：[ExcalidrawPluginDocs](https://github.com/zsviczian/obsidian-excalidraw-plugin/blob/master/docs/readme.md)
+> 	- [Excalidraw 脚本的基本配置]( https://pkmer.cn/show/20231110205703 )
 
 ---
 
@@ -83,8 +87,6 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 		- ⏩双击 num 可以重新编辑编号
 		- ⏹再次运行脚本即可退出编号模式
 
-> 这个非常好用，简单但实用
-
 ## 图片处理
 
 ### OpenSelectImage
@@ -99,6 +101,8 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 	- 在 Excalidraw 插件设置里面可以设置参数，除了默认应用打开外，还可以自定义多个不同软件打开
 	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/fd9854c10322d74d836c59f46c276270.png)
 	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/a6561992c1e8b9a56e224727b7c70da3.png)
+
+> 这个非常好用，简单但实用
 
 ### TextExtractor
 
