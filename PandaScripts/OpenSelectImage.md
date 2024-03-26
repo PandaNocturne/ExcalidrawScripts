@@ -1,8 +1,8 @@
 /*
  * @Author: 熊猫别熬夜 
  * @Date: 2024-03-11 23:41:55 
- * @Last Modified by:   熊猫别熬夜 
- * @Last Modified time: 2024-03-11 23:41:55 
+ * @Last Modified by: 熊猫别熬夜
+ * @Last Modified time: 2024-03-26 12:02:13
  */
 
 await ea.addElementsToView();
@@ -29,7 +29,7 @@ if (img.length === 0) {
 }
 
 let choices = settings["OpenSelectImage"].value.split("\n");
-choices.unshift("默认", "打开文件夹");
+choices.unshift("默认应用", "打开文件夹", "删除图片");
 const choice = await utils.suggester(choices.map(i => i.split("\\").at(-1).replace("\.exe", "")), choices, "图片打开的方式");
 if (!choice) return;
 
@@ -48,6 +48,17 @@ for (i of img) {
   } else if (choice === choices[1]) {
     // 使用打开当前笔记文件夹
     app.showInFolder(filePath);
+  } else if (choice === choices[2]) {
+    const isConfirm = confirm(`是否删除 ${filePath}`);
+    if (!isConfirm) {
+      new Notice("已取消删除");
+    } else {
+      // 删除元素
+      ea.deleteViewElements([i]);
+      // 删除文件
+      await(app.vault.adapter).trashLocal(filePath);
+      new Notice("删除成功");
+    }
   } else {
     // 获取库的基本路径
     const fileBasePath = file.vault.adapter.basePath;
@@ -66,3 +77,5 @@ for (i of img) {
     });
   }
 }
+await ea.addElementsToView(false, true);
+await ea.getExcalidrawAPI().history.clear(); //避免撤消/重做扰乱

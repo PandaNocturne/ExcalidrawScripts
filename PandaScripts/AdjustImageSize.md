@@ -2,12 +2,12 @@
  * @Author: 熊猫别熬夜 
  * @Date: 2024-01-31 13:00:21 
  * @Last Modified by: 熊猫别熬夜
- * @Last Modified time: 2024-01-31 13:01:03
+ * @Last Modified time: 2024-03-25 14:41:10
  */
 
 // 获取选中的元素
 const selectedEls = ea.getViewSelectedElements().filter(el => el.type === "frame" || "image" || "rectangle" || "ellipse");
-const scalingTypes = ["等宽缩放", '等高缩放', '完全相等'];
+const scalingTypes = ['等高缩放', "等宽缩放", '完全相等'];
 const inputScalingType = await utils.suggester(scalingTypes, scalingTypes, "选择缩放类型");
 if (!inputScalingType) return;
 
