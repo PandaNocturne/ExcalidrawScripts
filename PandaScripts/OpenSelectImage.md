@@ -2,7 +2,7 @@
  * @Author: 熊猫别熬夜 
  * @Date: 2024-03-11 23:41:55 
  * @Last Modified by: 熊猫别熬夜
- * @Last Modified time: 2024-03-27 03:16:47
+ * @Last Modified time: 2024-03-28 23:34:32
  */
 
 await ea.addElementsToView();
@@ -22,23 +22,24 @@ if (!settings["OpenSelectImage"]?.value) {
   ea.setScriptSettings(settings);
 }
 
-let choices = settings["OpenSelectImage"].value.split("\n");
-choices.unshift("🖼默认应用", "🗑删除图片", "⚙修改设置", "📂打开文件夹", "🎭图片重命名");
-const choice = await utils.suggester(choices.map(i => i.split("\\").at(-1).replace("\.exe", "")), choices, "图片打开的方式");
-if (!choice) return;
+let choices = settings["OpenSelectImage"].value.split("\n").map(i => i.trim());
+const choices0 = ["🖼默认应用", "🗑删除图片", "⚙修改设置", "📂打开文件夹", "🎭图片重命名"];
 
-if (choice === choices[2]) {
+const img = ea.getViewSelectedElements().filter(el => el.type === "image");
+
+// 若无选择图片
+if (img.length === 0) {
   let input = await utils.inputPrompt("设置外部软件，绝对路径", "其他默认图片编辑软件的系统绝对路径，以换行分隔", settings["OpenSelectImage"].value, null, 10);
   if (!input) return;
   settings["OpenSelectImage"].value = input;
   ea.setScriptSettings(settings);
-  choice = choices[1];
   return;
 }
+const allChoices = [...choices0, ...choices];
+const choice = await utils.suggester([...choices0, ...choices.map(i => "⚡" + i.split("\\").at(-1).replace("\.exe", ""))], allChoices, "图片打开的方式");
+if (!choice) return;
 
-const img = ea.getViewSelectedElements().filter(el => el.type === "image");
-if (img.length === 0) {
-  new Notice("No image is selected");
+if (choice === choices[2]) {
   let input = await utils.inputPrompt("设置外部软件，绝对路径", "其他默认图片编辑软件的系统绝对路径，以换行分隔", settings["OpenSelectImage"].value, null, 10);
   if (!input) return;
   settings["OpenSelectImage"].value = input;
@@ -57,12 +58,13 @@ for (i of img) {
   }
 
   const filePath = file.path;
-  if (choice === choices[0]) {
+  if (choice === allChoices[0]) {
     // 用默认应用打开
     app.openWithDefaultApp(filePath);
-  } else if (choice === choices[1]) {
-    const quickaddApi = this.app.plugins.plugins.quickadd.api;
-    const isConfirm = await quickaddApi.yesNoPrompt("是否删除本地文件", filePath);
+  } else if (choice === allChoices[1]) {
+    // const quickaddApi = this.app.plugins.plugins.quickadd.api;
+    // const isConfirm = await quickaddApi.yesNoPrompt("是否删除本地文件", filePath);
+    const isConfirm = true;
     if (!isConfirm) {
       new Notice("已取消删除");
     } else {
@@ -72,10 +74,10 @@ for (i of img) {
       await(app.vault.adapter).trashLocal(filePath);
       new Notice("🗑删除成功");
     }
-  } else if (choice === choices[3]) {
+  } else if (choice === allChoices[3]) {
     // 使用打开当前笔记文件夹
     app.showInFolder(filePath);
-  } else if (choice === choices[4]) {
+  } else if (choice === allChoices[4]) {
     // 图片重命名
     const pathNoExtension = file.path.substring(0, file.path.length - file.extension.length - 1);
     const newPath = await utils.inputPrompt("移动或重命名图片", "file path", pathNoExtension);
