@@ -129,7 +129,7 @@ async function processZoteroData(ea,insert_txt) {
 
 	zotero_txt = match_zotero_txt(insert_txt);
 	zotero_author = match_zotero_author(insert_txt);
-	zotero_link = match_zotero_link(insert_txt);
+	zotero_link = match_zotero_link(insert_txt).replace("page=NaN&","");
 
 	if (zotero_author) {
 		zotero_author = `[(${zotero_author})](${zotero_link})`;

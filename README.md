@@ -1,3 +1,6 @@
+---
+uid: "20240318075141227"
+---
 分享下使用 Obsidian 一年多折腾 Excalidraw 时写的 Excalidraw 脚本片段，GitHub 仓库：[熊猫别熬夜的 Excalidraw 代码片段](https://github.com/PandaNocturne/ExcalidrawScripts)，
 
 可通过 Excalidraw 插件的脚本代码块 (\`\`\`excalidraw-script-install) 来安装，里面放的是脚本 GitHub 的 RAW 链接，在 Obsidian 中会显示为按钮，脚本更新会自动检测，欢迎大家分享和反馈，脚本的详细介绍我都上传到 [PKMer](https://pkmer.cn/) 了。
