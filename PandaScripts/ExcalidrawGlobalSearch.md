@@ -25,9 +25,10 @@ if (!settings["ocrModel"]) {
     ea.setScriptSettings(settings);
 }
 
-const textEls = ea.getViewElements().filter(el => el.type === "text" && el.rawText.length >= 4);
+const textEls = ea.getViewElements().filter(el => el.type === "text" && el.text.length >= 4);
 const fileEls = ea.getViewElements().filter(el => el.type === "embeddable");
-const imageEls = ea.getViewElements().filter(el => el.type === "image");
+const imageEls = ea.getViewElements().filter(el => el.type === "image").filter(el => el.customData["ocrText"] !== "...");
+const allFrameEls = ea.getViewElements().filter(el => el.type === "frame");
 const nums = imageEls.filter(el => el.customData && el.customData["ocrText"]).length;
 const zoom = [2, 1, 2, 3];
 const icon = ["✒", "💬", "🖼", "📝"];
@@ -82,7 +83,7 @@ const imageOCR = async (imageEls) => {
                 })
                 .catch(error => {
                     new Notice(`Paddleocr识别失败，跳过`);
-                    ocrText = "◻◻◻◻◻◻";
+                    ocrText = "...";
                     console.error(error);
                 });
         } else if (settings["ocrModel"].value === "TextExtractor") {
@@ -91,10 +92,15 @@ const imageOCR = async (imageEls) => {
             ocrText = processText(text);
         }
         // 更新数据源，存储在元素中
-        el.customData["ocrText"] = ocrText;
-        // 收集提取的信息
-        allImageText.push(ocrText);
-        allImageEls.push(el);
+        if (ocrText === '...' || ocrText === '◻◻◻◻◻◻') {
+            el.customData["ocrText"] = "...";
+        } else {
+            el.customData["ocrText"] = ocrText;
+            // 收集提取的信息
+            allImageText.push(ocrText);
+            allImageEls.push(el);
+        }
+
         await ea.addElementsToView(false, false);
     }
     ea.copyViewElementsToEAforEditing(imageEls);
@@ -103,11 +109,22 @@ const imageOCR = async (imageEls) => {
 };
 
 if (choice === choices[0]) {
-    new Notice(`全局搜索中......存在${nums}个未OCR图片`);
+    new Notice(`全局搜索中存在${imageEls.length - nums}个未OCR的图片没被检索`);
     let allElText = [];
     let allElements = [];
-    const { allImageText, allImageEls } = await imageOCR(imageEls);
-    allElText = [...(textEls.map(el => `✒${el.rawText}`)), ...(allImageText.map(txt => `${icon[2]}${txt.replace(/\n+/g, "◼")}`))];
+    const { allImageText, allImageEls } = await imageOCR(imageEls.filter(el => el.customData && el.customData["ocrText"]));
+    // const allTexts = textEls.map(el => {
+    //     if (el.frameId) {
+    //         const frameEl = allFrameEls.find(frame => frame.id === el.frameId);
+    //         if (frameEl) {
+    //             return `${icon[1]} Frame: ${frameEl.name}\n${el.text}`;
+    //         }
+    //     }
+    //     return `${icon[1]}${el.text}`;
+    // });
+    const allTexts = textEls.map(el => `${icon[1]}${el.text}`);
+
+    allElText = [...allTexts, ...(allImageText.map(txt => `${icon[2]}${txt.replace(/\n+/g, "◼")}`))];
     allElements = [...textEls, ...allImageEls];
 
     // 2024-03-31_02:50：按y轴排序，这样有点耗性能，强迫证使我弄了这个
@@ -116,7 +133,7 @@ if (choice === choices[0]) {
     for (let i = 0; i < allElements.length; i++) {
         const element = allElements[i];
         if (element.type === 'text') {
-            sortedAllElText.push(`${icon[1]}${element.rawText}`);
+            sortedAllElText.push(`${icon[1]}${element.text}`);
         } else if (element.type === 'image') {
             const imageText = element.customData["ocrText"];
             sortedAllElText.push(`${icon[2]}${imageText.replace(/\n+/g, "◼")}`);
@@ -136,7 +153,8 @@ if (choice === choices[0]) {
 }
 // 文本搜索
 if (choice === choices[1]) {
-    const selectedElement = await quickAddApi.suggester(textEls.map(el => el.rawText).map(txt => `✒${txt}` + `\n`.repeat(2)), textEls);
+    // textEls.map(el => el.text)
+    const selectedElement = await quickAddApi.suggester(textEls.map(el => `${icon[1]}${el.text}` + `\n`.repeat(2)), textEls);
     if (selectedElement) {
         // 执行跳转到选定元素的操作
         api = ea.getExcalidrawAPI();
@@ -158,148 +176,6 @@ if (choice === choices[2]) {
     return;
 }
 
-
-// // ! 图片 OCR 或文本编辑
-// const els = ea.getViewElements().filter(el => el.type === "text" || el.type === "image" || el.type === "embeddable");
-// if (els.length >= 1) {
-//     // 是否为批处理
-//     const nums = els.filter(el => el.type == "image" || el.type === "text").length;
-//     let batchRecognition = false;
-
-//     // 多文本则进行批处理
-//     if (nums > 1) {
-//         new Notice(`检测到${nums}张图片\n进行批量识别`, 500);
-//         batchRecognition = true;
-//     }
-
-//     // 图片计数
-//     let n = 0;
-
-//     // 汇集所有文本集合
-//     let allText = [];
-//     // 获取库所有文件列表
-//     const files = app.vault.getFiles();
-
-//     for (let el of els) {
-//         if (el.type == "image") {
-//             let data = {
-//                 filePath: "",
-//                 fileId: "",
-//                 ocrText: "",
-//             };
-//             const currentPath = ea.plugin.filesMaster.get(el.fileId).path;
-//             const file = app.vault.getAbstractFileByPath(currentPath);
-
-
-//             // 获取图片路径
-//             const imagePath = app.vault.adapter.getFullPath(file.path);
-//             console.log(`获取图片路径：${imagePath}`);
-
-//             const jsonPath = path.join(textCachePath, `${el.fileId}.json`);
-
-//             // 判断是否进行存储Json数据
-//             let jsonData = {};
-//             if (settings["TextCache"].value) {
-//                 jsonData = readJsonData(jsonPath, data);
-//                 console.log(jsonData.valueOf());
-//             } else {
-//                 jsonData = {};
-//             }
-
-//             // 初始化ocr文本
-//             let ocrText = "";
-//             let ocrText_yaml = "";
-//             n++;
-
-//             await app.fileManager.processFrontMatter(activeFile, fm => {
-//                 ocrText_yaml = fm[`ocrText`]?.[`${el.fileId}`];
-//             });
-
-//             if (ocrText_yaml) {
-//                 ocrText = JSON.parse(ocrText_yaml);
-//             } else if (jsonData.ocrText) {
-//                 new Notice(`图片已存在OCR文本`, 500);
-//                 ocrText = jsonData.ocrText;
-//             } else if (settings["ocrModel2"].value == "Paddleocr") {
-//                 new Notice(`图片OCR中......`);
-//                 // 其次执行Paddleocr，如果报错则会保留ocrText的值
-//                 const scriptPath = `${basePath}/${settings["PaddleocrPath"].value}`;
-//                 console.log(scriptPath);
-//                 await runPythonScript(scriptPath, imagePath)
-//                     .then(output => {
-//                         // 在这里处理Python脚本的输出
-//                         console.log(output);
-//                         let paddlleocrJson = JSON.parse(output);
-//                         let paddlleocrText = paddlleocrJson.data.map(item => item.text);
-//                         ocrText = paddlleocrText.join("\n");
-//                         new Notice(`第${n}张片已完成OCR`, 500);
-
-//                     })
-//                     .catch(error => {
-//                         new Notice(`Paddleocr识别失败，采用TextExtractor`);
-//                         console.error(error);
-//                     });
-
-//             } else if (settings["ocrModel2"].value == "TextExtractor") {
-//                 new Notice(`图片OCR中......`);
-//                 const text = await getTextExtractor().extractText(file);
-//                 new Notice(`第${n}张片已完成OCR`, 500);
-//                 ocrText = processText(text);
-//             }
-
-//             if (!batchRecognition) {
-//                 const { insertType, ocrTextEdit } = await openEditPrompt(ocrText);
-//                 // 不管复制还是修改，都会保存
-//                 ocrText = ocrTextEdit;
-//                 if (insertType == "copyText") {
-//                     copyToClipboard(ocrTextEdit);
-//                     new Notice(`已复制：图片文本`, 1000);
-//                 } else if (insertType) {
-//                     new Notice(`完成修改`, 500);
-//                 }
-//             }
-
-//             // 更新数据源
-//             data.filePath = file.path;
-//             data.fileId = el.fileId;
-//             data.ocrText = ocrText;
-
-//             // 缓存数据
-//             if (settings["TextCache"].value) {
-//                 // 保存数据到Json文件中
-//                 fs.writeFileSync(jsonPath, JSON.stringify(data));
-//             }
-//             // 收集提取的信息
-//             allText.push(ocrText);
-
-//         } else if (el.type == "text") {
-//             let exText = el.rawText;
-//             console.log(exText);
-//             allText.push(exText);
-//         } else if (el.type == "embeddable" && el.link.endsWith("]]")) {
-//             let filePaths = getFilePath(files, el);
-//             // 读取文件内容
-//             let markdownText = getMarkdownText(filePaths);
-//             console.log(markdownText);
-//             allText.push(markdownText);
-
-//             copyToClipboard(markdownText);
-//             new Notice(`复制文本`, 3000);
-//         }
-//         await ea.addElementsToView(false, true);
-//     }
-//     await ea.addElementsToView(false, true);
-
-//     if (batchRecognition) {
-//         // 如果批量识别则直接进行复制文本
-//         const output = allText.join("\n\n");
-//         console.log(output);
-//         new Notice(`✅已完成批量OCR`, 3000);
-//         copyToClipboard(output);
-//         new Notice(`📋复制所有文本到剪切板`, 3000);
-//     }
-
-// }
 
 
 // 调用 Text Extractor 的 API

@@ -386,7 +386,7 @@ const processMindFrames = async (mindEls) => {
 // document.addEventListener('keydown', async function (event) {
 //   if (event.ctrlKey && event.key === 's') {
     // 延迟500ms，等待excalidraw渲染完成
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // await new Promise(resolve => setTimeout(resolve, 1000));
     // 拓展功能：由父节点处理子节点
     const selected = ea.getViewSelectedElements().filter(el => el.type !== "arrow").filter(el => el.boundElements);
     // 如果选中了元素
