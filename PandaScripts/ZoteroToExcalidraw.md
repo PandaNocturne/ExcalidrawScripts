@@ -46,8 +46,6 @@ if (settings["Zotero Annotations Color"].value) {
 	InsertStyle = await utils.suggester(fillStyles, fillStyles, "选择插入卡片颜色的形式，ESC则为白底黑字)");
 }
 
-// 设定一些样式
-
 
 el.ondrop = async function (event) {
 	console.log("ondrop");
@@ -61,7 +59,7 @@ el.ondrop = async function (event) {
 		insert_txt = processText(insert_txt);
 		// 清空原本投入的文本
 		event.stopPropagation();
-		processZoteroData(ea,insert_txt)
+		processZoteroData(ea, insert_txt);
 
 	} else if (ondropType < 1) {
 		// 清空原本投入的文本
@@ -82,6 +80,7 @@ el.ondrop = async function (event) {
 };
 
 const eaApi = ExcalidrawAutomate;
+
 eaApi.onPasteHook = async function ({ ea, payload, event, excalidrawFile, view, pointerPosition }) {
 	console.log("onPaste");
 	event.preventDefault();
@@ -94,11 +93,11 @@ eaApi.onPasteHook = async function ({ ea, payload, event, excalidrawFile, view, 
 		payload.text = "";
 		insert_txt = processText(inputText);
 		event.stopPropagation();
-		processZoteroData(ea,insert_txt)
+		processZoteroData(ea, insert_txt);
 	}
 };
 
-async function processZoteroData(ea,insert_txt) {
+async function processZoteroData(ea, insert_txt) {
 	ea.clear();
 	ea.style.strokeStyle = "solid";
 	ea.style.fillStyle = 'solid';
@@ -129,7 +128,7 @@ async function processZoteroData(ea,insert_txt) {
 
 	zotero_txt = match_zotero_txt(insert_txt);
 	zotero_author = match_zotero_author(insert_txt);
-	zotero_link = match_zotero_link(insert_txt).replace("page=NaN&","");
+	zotero_link = match_zotero_link(insert_txt);
 
 	if (zotero_author) {
 		zotero_author = `[(${zotero_author})](${zotero_link})`;
@@ -223,7 +222,7 @@ function match_zotero_author(text) {
 function match_zotero_link(text) {
 	const regex = /\[pdf\]\((.*)\)\)/;
 	const matches = text.match(regex);
-	return matches ? matches[1] : "";
+	return matches ? matches[1].replace("page=NaN&", "") : "";
 }
 
 function match_zotero_comment(text) {
