@@ -198,7 +198,7 @@ async function processFile(allFrameEls, frameKanbanFullPath, fileName) {
                     if (selectedEl.id === elID) {
                         j = j + 1;
                         console.log(selectedEl.name);
-                        elText = `${j < 10 ? 0 : ""}${j}_${elText.replace(/Frame\d+_/, "")}`;
+                        elText = `${j < 10 ? 0 : ""}${j}_${elText.replace(/(Frame)?\d+_/, "")}`;
                         selectedEl.name = elText;
                         lines[i] = lines[i].replace(/(^-\s.*?\[\[.*?\.md#\^\w+=[a-zA-Z0-9-_]+\|?)(.*?)(\]\].*)/, `$1${elText}$3`);
                     }
