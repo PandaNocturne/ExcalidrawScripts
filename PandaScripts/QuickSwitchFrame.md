@@ -10,5 +10,5 @@ const selectedElement = frameElements.find(el => el.name === choice);
 if (selectedElement) {
     // 执行跳转到选定元素的操作
     api = ea.getExcalidrawAPI();
-    api.zoomToFit([selectedElement], 10);
+    api.zoomToFit([selectedElement], 3);
 }
