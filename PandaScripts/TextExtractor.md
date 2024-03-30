@@ -20,36 +20,12 @@ if (!settings["ocrModel2"]) {
 			value: ".obsidian/paddlleocr/PaddleocrToJson.py",
 			description: "选择 paddlleocr 文件夹路径下的 PaddleocrToJson.py 文件"
 		},
-		"TextCache": {
-			value: false,
-			description: "是否存储文本数据到 JSON 文件中，如果图片已经编辑过后，会保留编辑后的数据，防止二次编辑"
-		},
-		"TextCachePath": {
-			value: "",
-			description: "如果开启 TextCache，请选择图片 OCR 的文本数据存储位置(相对于库的文件夹路径)"
-		}
 	};
 	ea.setScriptSettings(settings);
 }
 
 // 获取库的基本路径
 const basePath = (app.vault.adapter).getBasePath();
-const textCachePath = `${basePath}/${settings["TextCachePath"].value}`;
-
-if (!fs.existsSync(textCachePath)) {
-	fs.mkdirSync(textCachePath, { recursive: true });
-	console.log('配置路径已创建');
-} else {
-	console.log('配置路径已存在');
-}
-
-// !添加 ocrText 属性
-await app.fileManager.processFrontMatter(Activefile, fm => {
-	if (typeof fm[`ocrText`] !== 'object') fm[`ocrText`] = {};
-});
-
-console.log("写入 Yaml");
-
 // ! text 类型
 const selectedTextElements = ea.getViewSelectedElements().filter(el => el.type === "text");
 
@@ -79,7 +55,6 @@ if (selectedTextElements.length === 1) {
 		ea.selectElementsInView(containers);
 	}
 	return;
-
 }
 
 // ! frame 类型
@@ -122,8 +97,8 @@ if (selectedFrameElements.length >= 1) {
 		for (el of allFrameElements) {
 			fm.aliases.push(el.name);
 		}
-	})
-	await ea.addElementsToView(); 
+	});
+	await ea.addElementsToView();
 }
 
 // ! 图片 OCR 或文本编辑
@@ -149,44 +124,24 @@ if (els.length >= 1) {
 
 	for (let el of els) {
 		if (el.type == "image") {
-			let data = {
-				filePath: "",
-				fileId: "",
-				ocrText: "",
-			};
 			const currentPath = ea.plugin.filesMaster.get(el.fileId).path;
 			const file = app.vault.getAbstractFileByPath(currentPath);
-
 
 			// 获取图片路径
 			const imagePath = app.vault.adapter.getFullPath(file.path);
 			console.log(`获取图片路径：${imagePath}`);
 
-			const jsonPath = path.join(textCachePath, `${el.fileId}.json`);
-
-			// 判断是否进行存储Json数据
-			let jsonData = {};
-			if (settings["TextCache"].value) {
-				jsonData = readJsonData(jsonPath, data);
-				console.log(jsonData.valueOf());
-			} else {
-				jsonData = {};
+			// !初始化
+			let ocrText = ""; n++;
+			if (!el.customData) {
+				el.customData = {
+					ocrText: ""
+				};
 			}
 
-			// 初始化ocr文本
-			let ocrText = "";
-			let ocrText_yaml = "";
-			n++;
-
-			await app.fileManager.processFrontMatter(Activefile, fm => {
-				ocrText_yaml = fm[`ocrText`]?.[`${el.fileId}`];
-			});
-
-			if (ocrText_yaml) {
-				ocrText = JSON.parse(ocrText_yaml);
-			} else if (jsonData.ocrText) {
-				new Notice(`图片已存在OCR文本`, 500);
-				ocrText = jsonData.ocrText;
+			if (el.customData["ocrText"]) {
+				// console.log(`图片已存在OCR文本`);
+				ocrText = el.customData["ocrText"];
 			} else if (settings["ocrModel2"].value == "Paddleocr") {
 				new Notice(`图片OCR中......`);
 				// 其次执行Paddleocr，如果报错则会保留ocrText的值
@@ -200,10 +155,10 @@ if (els.length >= 1) {
 						let paddlleocrText = paddlleocrJson.data.map(item => item.text);
 						ocrText = paddlleocrText.join("\n");
 						new Notice(`第${n}张片已完成OCR`, 500);
-
 					})
 					.catch(error => {
-						new Notice(`Paddleocr识别失败，采用TextExtractor`);
+						new Notice(`Paddleocr识别失败，跳过执行`);
+						ocrText = "";
 						console.error(error);
 					});
 
@@ -225,22 +180,8 @@ if (els.length >= 1) {
 					new Notice(`完成修改`, 500);
 				}
 			}
-
-			// 更新数据源
-			data.filePath = file.path;
-			data.fileId = el.fileId;
-			data.ocrText = ocrText;
-
-			// 保存信息到Yaml区
-			await app.fileManager.processFrontMatter(Activefile, fm => {
-				fm[`ocrText`][`${el.fileId}`] = JSON.stringify(ocrText);
-			});
-			console.log("写入Yaml");
-
-			if (settings["TextCache"].value) {
-				// 保存数据到Json文件中
-				fs.writeFileSync(jsonPath, JSON.stringify(data));
-			}
+			// 更新数据源，存储在元素中
+			el.customData["ocrText"] = ocrText;
 			// 收集提取的信息
 			allText.push(ocrText);
 
@@ -272,17 +213,6 @@ if (els.length >= 1) {
 	}
 
 }
-
-// ! 如果图片不存在则清理 yaml 对应的 id
-await app.fileManager.processFrontMatter(Activefile, fm => {
-	allels = ea.getViewElements();
-	Object.keys(fm.ocrText).forEach(key => {
-		console.log(key);
-		if ((!allels.some(el => `${el.fileId}` === key)) || fm[key] === "\"\"") {
-			delete fm.ocrText[key];
-		}
-	});
-});
 
 // 调用 Text Extractor 的 API
 function getTextExtractor() {
