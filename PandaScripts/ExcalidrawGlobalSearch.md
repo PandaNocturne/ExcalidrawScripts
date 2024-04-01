@@ -1,5 +1,4 @@
-await ea.addElementsToView(); //to ensure all images are saved into the file
-// 因为插件的代码是异步的，所以需要等待所有图片都加载完成
+await ea.addElementsToView(); // 等待所有图片都加载完成
 
 const quickAddApi = app.plugins.plugins.quickadd.api;
 const fs = require('fs');
@@ -25,25 +24,30 @@ if (!settings["ocrModel"]) {
     ea.setScriptSettings(settings);
 }
 
+// 获取文本元素
 const textEls = ea.getViewElements().filter(el => el.type === "text" && el.text.length >= 4);
-const fileEls = ea.getViewElements().filter(el => el.type === "embeddable");
-const imageEls = ea.getViewElements().filter(el => el.type === "image").filter(el => el.customData["ocrText"] !== "...");
-const allFrameEls = ea.getViewElements().filter(el => el.type === "frame");
-const nums = imageEls.filter(el => el.customData && el.customData["ocrText"]).length;
-const zoom = [2, 1, 2, 3];
+
+// 获取嵌入文档元素
+const fileEls = [...ea.getViewElements().filter(el => el.type === "embeddable"), ...ea.getViewElements().filter(el => el.type !== "embeddable" && el.link && el.link.endsWith("\]\]"))];
+// 获取图片元素
+const imageEls = ea.getViewElements().filter(el => el.type === "image");
+const imgOcrEls = imageEls.filter(el => el.customData && el.customData["ocrText"]);
+const imgOcrErrorEls = imgOcrEls.filter(el => el.customData["ocrText"] === "...");
+const imgOcrNum = imageEls.length - imgOcrErrorEls.length;
+const imgUnOcrNum = imageEls.length - imgOcrEls.length;
+
+const zoom = [2, 2, 3, 3];
 const icon = ["✒", "💬", "🖼", "📝"];
 
 // 获取库的基本路径
 const basePath = (app.vault.adapter).getBasePath();
 
-// 搜索来源
-const choices = [`${icon[0]}全局搜索(${textEls.length + imageEls.length})`, `${icon[1]}文本数据(${textEls.length})`, `${icon[2]}图片(OCR)(${imageEls.length}/${nums})`, `${icon[3]}嵌入文档(❌还没做)`,];
+// 综合选项
+const choices = [`${icon[0]}全局搜索(${textEls.length + imgOcrNum + fileEls.length}-${imgUnOcrNum})`, `${icon[1]}文本数据(${textEls.length})`, `${icon[2]}图片(OCR)(${imgOcrNum}-${imgUnOcrNum})`, `${icon[3]}嵌入文档(${fileEls.length})`,];
 const choice = await utils.suggester(choices, choices);
 
-
-
 // 图片的OCR并不会记录在Yaml区而是记录在自定义数据中
-const imageOCR = async (imageEls) => {
+const getImgOCR = async (imageEls) => {
     // 图片计数
     let n = 0;
     // 汇集所有文本集合
@@ -108,41 +112,50 @@ const imageOCR = async (imageEls) => {
     return { allImageText, allImageEls };
 };
 
-if (choice === choices[0]) {
-    new Notice(`全局搜索中存在${imageEls.length - nums}个未OCR的图片没被检索`);
-    let allElText = [];
-    let allElements = [];
-    const { allImageText, allImageEls } = await imageOCR(imageEls.filter(el => el.customData && el.customData["ocrText"]));
-    // const allTexts = textEls.map(el => {
-    //     if (el.frameId) {
-    //         const frameEl = allFrameEls.find(frame => frame.id === el.frameId);
-    //         if (frameEl) {
-    //             return `${icon[1]} Frame: ${frameEl.name}\n${el.text}`;
-    //         }
-    //     }
-    //     return `${icon[1]}${el.text}`;
-    // });
-    const allTexts = textEls.map(el => `${icon[1]}${el.text}`);
-
-    allElText = [...allTexts, ...(allImageText.map(txt => `${icon[2]}${txt.replace(/\n+/g, "◼")}`))];
-    allElements = [...textEls, ...allImageEls];
-
-    // 2024-03-31_02:50：按y轴排序，这样有点耗性能，强迫证使我弄了这个
-    allElements.sort((a, b) => a.y - b.y);
-    let sortedAllElText = [];
-    for (let i = 0; i < allElements.length; i++) {
-        const element = allElements[i];
-        if (element.type === 'text') {
-            sortedAllElText.push(`${icon[1]}${element.text}`);
-        } else if (element.type === 'image') {
-            const imageText = element.customData["ocrText"];
-            sortedAllElText.push(`${icon[2]}${imageText.replace(/\n+/g, "◼")}`);
+const getFileText = (files, fileEls) => {
+    const allFileText = [];
+    const allFileEl = [];
+    for (let el of fileEls) {
+        const filePath = getFilePath(files, el);
+        if (!filePath) continue;
+        if (filePath.endsWith(".md") && !filePath.endsWith("excalidraw.md")) {
+            // 读取文件内容
+            const markdownText = getMarkdownText(filePath);
+            allFileEl.push(el);
+            allFileText.push(`${filePath}：\n\n${markdownText}`);
         }
     }
-    allElText = sortedAllElText;
+    return { allFileText, allFileEl };
+};
+
+if (choice === choices[0]) {
+    if ((imageEls.length - imgOcrEls.length) >= 1) {
+        new Notice(`💡全局搜索中存在${imageEls.length - imgOcrEls.length}个未OCR的图片没被检索`);
+    }
+    let allElText = [];
+    let allElements = [];
+    // 获取图片文本
+    const { allImageText, allImageEls } = await getImgOCR(imageEls.filter(el => el.customData && el.customData["ocrText"]));
+    // 获取文本文本
+    const allTexts = textEls.map(el => `${icon[1]}${el.text}`);
+    // 获取文件文本
+    const files = app.vault.getFiles();
+    const { allFileText, allFileEl } = getFileText(files, fileEls);
+
+    allElText = [
+        ...allTexts,
+        ...allImageText.map(img => `${icon[2]}${img.replace(/\n+/g, "◼")}`),
+        ...allFileText.map(txt => `${icon[3]}${txt}`)
+    ];
+    allElements = [
+        ...textEls,
+        ...allImageEls,
+        ...allFileEl];
 
     // 因为Excalidraw的utils.suggester建议框有数量限制，这里选用QuickAdd的api
-    const selectedElement = await quickAddApi.suggester(allElText.map(txt => `${txt}` + `\n`.repeat(2)), allElements);
+    const selected = await quickAddApi.suggester(allElText.map(txt => `${txt}` + `\n`.repeat(2)), allElText);
+    const index = allElText.indexOf(selected);
+    const selectedElement = allElements[index];
 
     if (selectedElement) {
         // 执行跳转到选定元素的操作
@@ -151,7 +164,7 @@ if (choice === choices[0]) {
     }
     return;
 }
-// 文本搜索
+// 💬文本搜索
 if (choice === choices[1]) {
     // textEls.map(el => el.text)
     const selectedElement = await quickAddApi.suggester(textEls.map(el => `${icon[1]}${el.text}` + `\n`.repeat(2)), textEls);
@@ -162,11 +175,10 @@ if (choice === choices[1]) {
     }
     return;
 }
-
-// 图片搜索
+// 🖼图片搜索
 if (choice === choices[2]) {
-    console.log(`检测到${nums}张图片，进行批量OCR识别`);
-    const { allImageText, allImageEls } = await imageOCR(imageEls);
+    console.log(`检测到${imgUnOcrNum}张图片未进行OCR识别...OCR识别中`);
+    const { allImageText, allImageEls } = await getImgOCR(imageEls);
     const selectedElement = await quickAddApi.suggester(allImageText.map(txt => `${icon[2]}${txt.replace(/\n+/g, "◼")}` + `\n`.repeat(2)), allImageEls);
     if (selectedElement) {
         // 执行跳转到选定元素的操作
@@ -176,7 +188,20 @@ if (choice === choices[2]) {
     return;
 }
 
+// 📝嵌入文档搜索，目前只支持embed格式
+if (choice === choices[3]) {
+    // 获取库所有文件列表
+    const files = app.vault.getFiles();
 
+    const { allFileText, allFileEl } = getFileText(files, fileEls);
+    const selectedElement = await quickAddApi.suggester(allFileText.map(txt => `${icon[3]}${txt}` + `\n`.repeat(2)), allFileEl);
+    if (selectedElement) {
+        // 执行跳转到选定元素的操作
+        api = ea.getExcalidrawAPI();
+        api.zoomToFit([selectedElement], zoom[3]);
+    }
+    return;
+}
 
 // 调用 Text Extractor 的 API
 function getTextExtractor() {
@@ -209,15 +234,11 @@ function processText(text) {
 function getMarkdownText(filePath) {
     // 获取文件的完整路径
     const fileFullPath = app.vault.adapter.getFullPath(filePath);
-
     // 读取文件内容
     const fileContent = fs.readFileSync(fileFullPath, 'utf8');
-
     // 排除首行YAML区域
     const markdownText = fileContent.replace(/---[\s\S]*?---\n*/, '').replace(/\n\n/, "\n");
-
     return markdownText;
-
 }
 
 // 由文件列表和 el 元素获取文件路径(相对路径)

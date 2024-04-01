@@ -1,22 +1,22 @@
 ea.targetView.svg(ea.targetView.getScene(true), undefined, true).then(svg => {
   let base64 = `data:image/svg+xml;base64,${btoa(
-      unescape(encodeURIComponent(svg.outerHTML.replaceAll("&nbsp;", " "))),
+    unescape(encodeURIComponent(svg.outerHTML.replaceAll("&nbsp;", " "))),
   )}`;
 
   // 将SVG转换为PNG
   const img = new Image();
   img.src = base64;
   img.onload = function () {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      // 将PNG数据导出到本地文件
-      canvas.toBlob(function (blob) {
-          saveBlobToFile(blob, "output.png");
-          new Notice("复制成功");
-      });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    // 将PNG数据导出到本地文件
+    canvas.toBlob(function (blob) {
+      const date = window.moment().format("gggg-MM-DD_HHmmss");
+      saveBlobToFile(blob, `Excalidraw-${date}.png`);
+    });
   };
 });
 
