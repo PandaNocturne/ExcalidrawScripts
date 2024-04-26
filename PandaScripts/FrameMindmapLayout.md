@@ -353,14 +353,14 @@ const generateTree = (elements) => {
   dfsForFormat(root);
 };
 
-// // 最基础功能：选择多个图形对齐，适用于bug问题
-// const elements = ea.getViewSelectedElements();
-// if (elements.length > 1) {
-//   generateTree(elements);
-//   ea.copyViewElementsToEAforEditing(elements);
-//   await ea.addElementsToView(false, false);
-//   return;
-// }
+// 最基础功能：选择多个图形对齐，适用于bug问题
+const elements = ea.getViewSelectedElements();
+if (elements.length > 1) {
+  generateTree(elements);
+  ea.copyViewElementsToEAforEditing(elements);
+  await ea.addElementsToView(false, false);
+  return;
+}
 
 // 2024-03-29_18:00：自动对齐所有子元素
 // 批量处理
@@ -376,47 +376,35 @@ const processMindFrames = async (mindEls) => {
       await ea.addElementsToView(false, false);
     } catch (error) {
       await ea.addElementsToView(false, false);
-      // new Notice("🔴格式化过程中出现问题，可能连线没衔接！");
+      new Notice("🔴格式化过程中出现问题，可能连线没衔接！");
       console.log(error);
       continue;
     }
   }
 };
-// // 监听Ctrl + S事件
-// document.addEventListener('keydown', async function (event) {
-//   if (event.ctrlKey && event.key === 's') {
-    // 延迟500ms，等待excalidraw渲染完成
-    // await new Promise(resolve => setTimeout(resolve, 1000));
-    // 拓展功能：由父节点处理子节点
-    const selected = ea.getViewSelectedElements().filter(el => el.type !== "arrow").filter(el => el.boundElements);
-    // 如果选中了元素
-    if (selected.length > 0) {
-      await processMindFrames(selected);
-      setTimeout(() => {
-        this.app.commands.executeCommandById("obsidian-excalidraw-plugin:save");
-      }, 500);
-      return;
-    }
 
-    // 设定文字及其边框自动排版特殊符号
-    const mindString = "mind";
-    // 获取特定frame：MindFrame，同时包含boundElements属性，不然容易导致错误
-    const mindFrames =ea.getViewElements().filter(el => el.type === "frame").filter(el => el.boundElements);
+const selected = ea.getViewSelectedElements().filter(el => el.type === "frame").filter(el => el.boundElements);
+// 如果选中了元素
+if (selected.length > 0) {
+  await processMindFrames(selected);
+  return;
+}
 
-    // 获取特定text及其容器：MindText、MindContainer
-    const mindText = ea.getViewElements().filter(el => el.type === "text" && el.rawText.includes(mindString));
-    const mindContainer = ea.getViewElements().filter(el => mindText.map(el => el.containerId).includes(el.id));
+// 获取特定frame：MindFrame，同时包含boundElements属性，不然容易导致错误
+const mindFrames = ea.getViewElements().filter(el => el.type === "frame").filter(el => el.boundElements);
 
-    // 处理所有元素
-    await processMindFrames([...mindFrames, ...mindText, ...mindContainer]);
-    await ea.addElementsToView(false, false);
-    setTimeout(() => {
-      this.app.commands.executeCommandById("obsidian-excalidraw-plugin:save");
-    }, 500);
-    new Notice("✅Frame导图式布局格式化完成");
-//   }
-// });
+// // 设定文字及其边框自动排版特殊符号
+// const mindString = "mind";
+// // 获取特定text及其容器：MindText、MindContainer
+// const mindText = ea.getViewElements().filter(el => el.type === "text" && el.rawText.includes(mindString));
+// const mindContainer = ea.getViewElements().filter(el => mindText.map(el => el.containerId).includes(el.id));
 
+// 处理所有元素
+await processMindFrames([...mindFrames]);
+setTimeout(() => {
+  this.app.commands.executeCommandById("obsidian-excalidraw-plugin:save");
+}, 500);
+new Notice("✅Frame导图式布局格式化完成");
 
 
 // 获取所有相关的子元素：
@@ -443,8 +431,3 @@ function getAllRelatedElements(element) {
   return relatedElements;
 };
 
-// // 排序，全局从最左边的开始
-// function elementsSort(elements, key = 'x') {
-//   let result = elements.slice(0);
-//   return result.sort((a, b) => Number(a[key]) - Number(b[key]));
-// }

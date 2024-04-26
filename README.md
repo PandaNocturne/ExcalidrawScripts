@@ -5,7 +5,7 @@ uid: "20240318075141227"
 
 可通过 Excalidraw 插件的脚本代码块 (\`\`\`excalidraw-script-install) 来安装，里面放的是脚本 GitHub 的 RAW 链接，在 Obsidian 中会显示为按钮，脚本更新会自动检测，欢迎大家分享和反馈，脚本的详细介绍我都上传到 [PKMer](https://pkmer.cn/) 了。
 
-![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/19567489151ba3ebb307e48831a6d4e5.png)
+![](./Assets/README_IMG-1.png)
 
 ````md
 ```excalidraw-script-install
@@ -45,7 +45,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：熊猫别熬夜
 - PKMerDoc：[自定义 Excalidraw 脚本 -QuickSwitchFrame- 简单的 Frame 切换大纲](https://pkmer.cn/show/20240311180729)
 - Description：提供一个 Frame 边框切换的提示框。
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/5bb5f5ff3d0904c44b7924d00c505cc5.gif)
+	- ![](./Assets/README_IMG-2.gif)
 
 ## 文档编辑
 
@@ -58,10 +58,10 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：熊猫别熬夜
 - PKMerDoc：[自定义 Excalidraw 脚本 - 快速插入时间戳笔记](https://pkmer.cn/show/20231110162417)
 - Description：快速插入或删除时间戳笔记
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/8e7920e0dc714fd56f08ba0ea1cea90c.png)
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/2f92a0a652ef1018a396929f0d91f88b.gif)
+	- ![](900【素材】Assets/910_ObsidianImages/./Assets/README_IMG-3.png)
+	- ![](./Assets/README_IMG-4.gif)
 	- 选择或框选笔记后，再次运行脚本就可以删除本地笔记和画板元素了
-		- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/3c3d9c919d425e96653c847ec97fa987.gif)
+		- ![](./Assets/README_IMG-5.gif)
 
 ### AddMermaidSvg
 
@@ -72,9 +72,9 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：一鸣惊人
 - PKMerDoc：[自定义 Excalidraw 脚本 - 插入可以编辑的 Mermaid 图形](https://pkmer.cn/show/20231207020538)
 - Description：插入可以二次编辑的 Mermaid 矢量图
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/a04af6892cddf799192fe0a7fd2a05aa.gif)
+	- ![](./Assets/README_IMG-6.gif)
 	- `Ctrl + 鼠标左键单击` 可以弹出源码：
-		- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/e28c97794733351ce4ebf6701e9e2ef3.gif)
+		- ![](./Assets/README_IMG-7.gif)
 
 ### NumberMode
 
@@ -85,7 +85,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：熊猫别熬夜
 - PKMerDoc：[自定义 Excalidraw 脚本 - 双击添加圆圈编号](https://pkmer.cn/show/20240221010235)
 - Description：编号模式，双击添加或编辑编号
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/c95d93ed00d130d9ed23e16fd3f1a2f2.gif)
+	- ![](./Assets/README_IMG-8.gif)
 		- ✅已启动编号模式，双击添加 num
 		- ⏩双击 num 可以重新编辑编号
 		- ⏹再次运行脚本即可退出编号模式
@@ -102,8 +102,8 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - PKMerDoc：[自定义 Excalidraw 脚本 - 默认应用打开图片](https://pkmer.cn/show/20231128000314)
 - Description：设定默认或其他软件打开图片
 	- 在 Excalidraw 插件设置里面可以设置参数，除了默认应用打开外，还可以自定义多个不同软件打开
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/fd9854c10322d74d836c59f46c276270.png)
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/a6561992c1e8b9a56e224727b7c70da3.png)
+	- ![](./Assets/README_IMG-9.png)
+	- ![](./Assets/README_IMG-10.png)
 
 > 这个非常好用，简单但实用
 
@@ -118,8 +118,8 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：熊猫别熬夜
 - PKMerDoc：[自定义 Excalidraw 脚本 - OCR 自动提取图片文字](https://pkmer.cn/show/20231115000252)
 - Description：使用 Text Extractor 插件或者本地 Paddleocr 模型批量识别画板中的图片到 Yaml 区，可编辑修改。
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/266c667788596fe6fa0bb96863a0cd0d.gif)
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/42801e05673fb58dabfb4ce39cc7e7d5.png)
+	- ![](./Assets/README_IMG-11.gif)
+	- ![](./Assets/README_IMG-12.png)
 - ChangeLog：
 	- 2023-12-29：
 		- 优化 OCR 识别文本的 Yaml 数据结构存储
@@ -136,7 +136,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：一鸣惊人，熊猫别熬夜
 - PKMerDoc：[自定义 Excalidraw 脚本 -AdjustImageSize- 统一多个图片宽度或者高度](https://pkmer.cn/show/20240131140236)
 - Description：用于调整多个图片 (image)、矩形框 (rectangle)、Frame 边框的大小，以选中的元素的最大宽度 (高度) 或者最小宽度 (高度) 进行统一缩放，分别有 `等宽缩放`、`等高缩放`、`完全相等` 这 3 个选项。
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/99718c40ffc9fe8f6f8426c329a8ccb1.gif)
+	- ![](./Assets/README_IMG-13.gif)
 
 > 这个非常好用，简单但实用
 
@@ -149,8 +149,8 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：熊猫别熬夜
 - PKMerDoc：[自定义 Excalidraw 脚本 - 上传画板中的图片到图床](https://pkmer.cn/show/20240221010558)
 - Description：将 Excalidraw 画板中引用的图片直接上传到 PicGo 的 Server 后并删除本地文件 (可不删除)
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/20b7a760ebb366fa03d213836a0ee229.gif)
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/2beb3d767ade9abc7a7d116c16074288.png)
+	- ![](./Assets/README_IMG-14.gif)
+	- ![](./Assets/README_IMG-15.png)
 
 ## 画布演示
 
@@ -163,9 +163,9 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：熊猫别熬夜
 - PKMerDoc：[自定义 Excalidraw 脚本 - 画板局部或者全局播放动画](https://pkmer.cn/show/20231108003544)
 - Description：逐步显示 Excalidraw 画板的元素
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/a1413f21d4c85fc051bbc3ee411511a4.png)
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/2648857a00a62ee2e3ed5c87d713c910.gif)
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/6688880a72a0656bad9d155e61147701.gif)
+	- ![](./Assets/README_IMG-16.png)
+	- ![](./Assets/README_IMG-17.gif)
+	- ![](./Assets/README_IMG-18.gif)
 
 ### FrameKanban
 
@@ -179,7 +179,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - ChangeLog：
 	- 2024-03-02：
 		- 添加缩略图是否添加连接选项，参数修改为中文注释
-			- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/2c649c1a58fca2a8e87740901ffe8366.png)
+			- ![](./Assets/README_IMG-19.png)
 		- 排序时会将 Frame 名称添加到文档的 aliases 区 (添加文档别名方便搜索)
 	- 2024-03-06：
 		- 当选中一个 Frame 时，不再弹出选项框，而是更新 frame 大纲 (无缩略图)
@@ -198,14 +198,14 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：熊猫别熬夜
 - PKMerDoc：[自定义 Excalidraw 脚本：实现 Zotero 与 Excalidraw 的拖拽联动](https://pkmer.cn/show/20230929013043)
 - Description：实现 Zotero 标注文本或者图片通过拖拽或者复制粘贴的形式添加到 Excalidraw 画板中
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/22c7ae053c8f9d20a087f0ed79fc8f0f.png)
+	- ![](./Assets/README_IMG-20.png)
 - ChangeLog：
 	- 2023-10-17：添加可以匹配 Zotero 标注颜色的设置
 	- 2024-03-22：可以通过复制粘贴形式来添加
 
 > Zotero 与 Obsidian 的 md 笔记的联动，参考 Quikcer 动作：
 > - [ZoteroToObsidian - by 熊猫别熬夜 - 动作信息 - Quicker](https://getquicker.net/Sharedaction?code=b7727e44-4933-4ec5-8103-08dbc1cb1ea7)
-> 	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/d261e95005989168f2ac76e7add0b8ee.png)
+> 	- ![](./Assets/README_IMG-21.png)
 
 ### BookxnoteToExcalidraw
 
@@ -216,11 +216,11 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：熊猫别熬夜
 - PKMerDoc：[自定义 Excalidraw 脚本 - 实现 Excalidraw 与 BookxNote 的联动](https://pkmer.cn/show/20231220152351)
 - Description：联动 Bookxnote 与 Excalidraw
-	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/ab40a64767bc3a404a5f83530bc8158e.gif)
+	- ![](./Assets/README_IMG-22.gif)
 
 > Bookxnote pro 与 Obsidian 的 md 笔记的联动，参考 Quikcer 动作：
 > - [BookxNoteToObsidian - by 熊猫别熬夜 - 动作信息 - Quicker](https://getquicker.net/Sharedaction?code=2bd5ec90-db36-49d4-51b3-08db7dd91f1a)
-> 	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/098517dc1fdd968dbb6cb8c4d78f266c.png)
+> 	- ![](./Assets/README_IMG-23.png)
 
 ### EagleToExcalidraw
 
@@ -234,4 +234,4 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 
 > Zotero 与 Eagle 的联动我也有一点尝试：
 > - [ZoteroToEagle - by 熊猫别熬夜 - 动作信息 - Quicker](https://getquicker.net/Sharedaction?code=85b92307-2003-47bd-afea-08dc426a44c3)
-> 	- ![](https://github.com/PandaNocturne/ExcalidrawScripts/raw/master/Images/a70b69414946a92c4fed3a08138f750f.png)
+> 	- ![](./Assets/README_IMG-24.png)

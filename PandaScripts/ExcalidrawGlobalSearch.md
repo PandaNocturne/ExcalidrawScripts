@@ -3,7 +3,7 @@ await ea.addElementsToView(); // 等待所有图片都加载完成
 const quickAddApi = app.plugins.plugins.quickadd.api;
 const fs = require('fs');
 const path = require('path');
-const activeFile = app.workspace.getActiveFile();
+// const activeFile = app.workspace.getActiveFile();
 const { exec } = require('child_process');
 
 
@@ -23,28 +23,6 @@ if (!settings["ocrModel"]) {
     };
     ea.setScriptSettings(settings);
 }
-
-// 获取文本元素
-const textEls = ea.getViewElements().filter(el => el.type === "text" && el.text.length >= 4);
-
-// 获取嵌入文档元素
-const fileEls = [...ea.getViewElements().filter(el => el.type === "embeddable"), ...ea.getViewElements().filter(el => el.type !== "embeddable" && el.link && el.link.endsWith("\]\]"))];
-// 获取图片元素
-const imageEls = ea.getViewElements().filter(el => el.type === "image");
-const imgOcrEls = imageEls.filter(el => el.customData && el.customData["ocrText"]);
-const imgOcrErrorEls = imgOcrEls.filter(el => el.customData["ocrText"] === "...");
-const imgOcrNum = imageEls.length - imgOcrErrorEls.length;
-const imgUnOcrNum = imageEls.length - imgOcrEls.length;
-
-const zoom = [2, 2, 3, 3];
-const icon = ["✒", "💬", "🖼", "📝"];
-
-// 获取库的基本路径
-const basePath = (app.vault.adapter).getBasePath();
-
-// 综合选项
-const choices = [`${icon[0]}全局搜索(${textEls.length + imgOcrNum + fileEls.length}-${imgUnOcrNum})`, `${icon[1]}文本数据(${textEls.length})`, `${icon[2]}图片(OCR)(${imgOcrNum}-${imgUnOcrNum})`, `${icon[3]}嵌入文档(${fileEls.length})`,];
-const choice = await utils.suggester(choices, choices);
 
 // 图片的OCR并不会记录在Yaml区而是记录在自定义数据中
 const getImgOCR = async (imageEls) => {
@@ -128,6 +106,37 @@ const getFileText = (files, fileEls) => {
     return { allFileText, allFileEl };
 };
 
+
+// 获取Frame元素
+const frameEls = ea.getViewElements().filter(el => el.type === "frame");
+
+// 获取文本元素
+const textEls = ea.getViewElements().filter(el => el.type === "text" && el.text.length >= 4);
+
+// 获取嵌入文档元素
+const fileEls = [...ea.getViewElements().filter(el => el.type === "embeddable"), ...ea.getViewElements().filter(el => el.type !== "embeddable" && el.link && el.link.endsWith("\]\]"))];
+// 获取文件文本
+const files = app.vault.getFiles();
+const { allFileText, allFileEl } = getFileText(files, fileEls);
+
+// 获取图片元素
+const imageEls = ea.getViewElements().filter(el => el.type === "image");
+const imgOcrEls = imageEls.filter(el => el.customData && el.customData["ocrText"]);
+const imgOcrErrorEls = imgOcrEls.filter(el => el.customData["ocrText"] === "...");
+const imgOcrNum = imageEls.length - imgOcrErrorEls.length;
+const imgUnOcrNum = imageEls.length - imgOcrEls.length;
+
+const zoom = [10, 10, 3, 3];
+const icon = ["✒", "💬", "🖼", "📝"];
+
+// 获取库的基本路径
+const basePath = (app.vault.adapter).getBasePath();
+
+// 综合选项
+const choices = [`${icon[0]}全局搜索(${textEls.length + imgOcrNum + fileEls.length}-${imgUnOcrNum})`, `${icon[1]}文本数据(${textEls.length})`, `${icon[2]}图片(OCR)(${imgOcrNum}-${imgUnOcrNum})`, `${icon[3]}嵌入文档(${allFileEl.length})`,];
+const choice = await utils.suggester(choices, choices);
+
+
 if (choice === choices[0]) {
     if ((imageEls.length - imgOcrEls.length) >= 1) {
         new Notice(`💡全局搜索中存在${imageEls.length - imgOcrEls.length}个未OCR的图片没被检索`);
@@ -137,10 +146,16 @@ if (choice === choices[0]) {
     // 获取图片文本
     const { allImageText, allImageEls } = await getImgOCR(imageEls.filter(el => el.customData && el.customData["ocrText"]));
     // 获取文本文本
-    const allTexts = textEls.map(el => `${icon[1]}${el.text}`);
-    // 获取文件文本
-    const files = app.vault.getFiles();
-    const { allFileText, allFileEl } = getFileText(files, fileEls);
+    const allTexts = textEls.map(el => {
+        if (el.frameId) {
+            const frameElement = frameEls.find(frame => frame.id === el.frameId);
+            return `Frame-${frameElement.name}：\n\n${icon[1]}${el.text}`;
+        } else {
+            return `${icon[1]}${el.text}`;
+        }
+    });
+
+    // const { allFileText, allFileEl } = getFileText(files, fileEls);
 
     allElText = [
         ...allTexts,
@@ -166,8 +181,14 @@ if (choice === choices[0]) {
 }
 // 💬文本搜索
 if (choice === choices[1]) {
-    // textEls.map(el => el.text)
-    const selectedElement = await quickAddApi.suggester(textEls.map(el => `${icon[1]}${el.text}` + `\n`.repeat(2)), textEls);
+    const selectedElement = await quickAddApi.suggester(textEls.map(el => {
+        if (el.frameId) {
+            const frameElement = frameEls.find(frame => frame.id === el.frameId);
+            return `Frame-${frameElement.name}：\n\n${icon[1]}${el.text}` + `\n`.repeat(2);
+        } else {
+            return `${icon[1]}${el.text}` + `\n`.repeat(2);
+        }
+    }), textEls);
     if (selectedElement) {
         // 执行跳转到选定元素的操作
         api = ea.getExcalidrawAPI();
@@ -190,10 +211,8 @@ if (choice === choices[2]) {
 
 // 📝嵌入文档搜索，目前只支持embed格式
 if (choice === choices[3]) {
-    // 获取库所有文件列表
-    const files = app.vault.getFiles();
 
-    const { allFileText, allFileEl } = getFileText(files, fileEls);
+    // const { allFileText, allFileEl } = getFileText(files, fileEls);
     const selectedElement = await quickAddApi.suggester(allFileText.map(txt => `${icon[3]}${txt}` + `\n`.repeat(2)), allFileEl);
     if (selectedElement) {
         // 执行跳转到选定元素的操作
