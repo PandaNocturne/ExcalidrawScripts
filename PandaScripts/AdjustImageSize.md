@@ -8,10 +8,10 @@ await ea.addElementsToView();
 // 获取选中的元素
 const selectedEls = ea.getViewSelectedElements().filter(el => el.type === "image");
 const scalingTypes = ['等高缩放', "等宽缩放", '等比缩放'];
-const inputScalingType = await utils.suggester(scalingTypes, scalingTypes, "选择缩放类型");
-if (!inputScalingType) return;
+const inputScalingType = await utils.suggester(options, options, "选择缩放类型");
+if (!option) return;
 
-if (inputScalingType === scalingTypes[2]) {
+if (option === options[2]) {
     let scaleRatio = await utils.inputPrompt("缩放比例", null, "1");
     if (!scaleRatio) return;
 
@@ -41,7 +41,7 @@ if (inputScalingType === scalingTypes[2]) {
         height = Math.min(...heights);
     }
 
-    if (inputScalingType === scalingTypes[1]) {
+    if (option === options[1]) {
         // 等宽缩放
         for (let selectedEl of selectedEls) {
             let rario = width / selectedEl.width;
@@ -49,7 +49,7 @@ if (inputScalingType === scalingTypes[2]) {
             selectedEl.height *= rario;
         }
 
-    } else if (inputScalingType === scalingTypes[0]) {
+    } else if (option === options[0]) {
         // 等高缩放
         for (let selectedEl of selectedEls) {
             let rario = height / selectedEl.height;

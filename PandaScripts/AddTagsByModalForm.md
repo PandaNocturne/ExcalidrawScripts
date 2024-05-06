@@ -41,10 +41,10 @@ const editorForm1 = {
 
 
 // ! text 类型
-const selectedTextElements = ea.getViewSelectedElements().filter(el => el.type === "text");
+const textEls = ea.getViewSelectedElements().filter(el => el.type === "text");
 
-if (selectedTextElements.length === 1) {
-  ea.copyViewElementsToEAforEditing(selectedTextElements);
+if (textEls.length === 1) {
+  ea.copyViewElementsToEAforEditing(textEls);
   const el = ea.getElements()[0];
   let exText = el.rawText;
   // 提取末尾的标签
