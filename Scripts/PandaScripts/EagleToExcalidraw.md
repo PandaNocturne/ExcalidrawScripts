@@ -168,7 +168,8 @@ if (selectedEls.length === 1) {
 
 const options = ["✅启动EagleToExcalidraw模式", "❌取消EagleToExcalidraw模式"];
 const option = await utils.suggester(options, options);
-if (option === "❌取消EagleToExcalidraw模式") {
+if (!option) return;
+if (option === "❌取消EagleToExcalidraw模式" ) {
     el.ondrop = null;
     new Notice("❌EagleToExcalidraw模式已取消！");
     return;
