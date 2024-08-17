@@ -23,6 +23,7 @@ const relativePath = settings["Eagle Images Path"].value;
 let selectedEls = ea.getViewSelectedElements();
 
 if (selectedEls.length === 1) {
+    let selectedEl = selectedEls[0];
     let embeddedFile = ea.targetView.excalidrawData.getFile(selectedEl.fileId);
     if (!embeddedFile) {
         new Notice("Can't find file: " + selectedEl.fileId);
