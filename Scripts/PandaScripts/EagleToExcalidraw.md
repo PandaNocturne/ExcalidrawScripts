@@ -103,8 +103,8 @@ if (selectedEls.length === 1) {
                     });
             });
         new ea.obsidian.Setting(container)
-            .setName(`返回链接`)
-            .setDesc(`启用或禁用Ob链接，需要Advanced URI插件`)
+            .setName(`Ob链接`)
+            .setDesc(`启用或禁用Ob定位链接，需要Advanced URI插件`)
             .addToggle(toggle => {
                 toggle
                     .setValue(returnLinkEnabled) // 默认值为true
