@@ -270,8 +270,10 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 ```
 
 - Author：熊猫别熬夜
-- Description：可选中 Excalidraw 中局部元素发送到 Eagle，已集合到EagleToExcalidraw脚本中，该脚本单独将此功能分离出来。
-	- ![File-20240817110840973.png](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318933.png)
+- Description：可选中 Excalidraw 中局部元素发送到 Eagle，已集合到EagleToExcalidraw脚本中，该脚本单独将此功能分离出来，导入Eagle里面的格式是SVG，可在官方Excalidraw中还原并二次编辑。
+	- ![File-20240817110840973.png](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408181239889.png)
+	- ![PixPin_2024-08-18_12-37-11.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408181239290.gif)
+	- ![PixPin_2024-08-18_12-37-40.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408181239775.gif)
 
 ## 社区分享的脚本
 

@@ -538,6 +538,7 @@ el.ondrop = async function (event) {
                     fileName.toLowerCase().endsWith(".jpeg") ||
                     fileName.toLowerCase().endsWith(".webp") ||
                     fileName.toLowerCase().endsWith(".icon") ||
+                    fileName.toLowerCase().endsWith(".ico") ||
                     fileName.toLowerCase().endsWith(".svg")
                 ) {
                     let id = await ea.addImage(0, 0, destinationName);
