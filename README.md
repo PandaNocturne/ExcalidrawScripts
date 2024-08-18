@@ -262,6 +262,17 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 > - [ZoteroToEagle - by 熊猫别熬夜 - 动作信息 - Quicker](https://getquicker.net/Sharedaction?code=85b92307-2003-47bd-afea-08dc426a44c3)
 > 	- ![File-20240426045317722.png](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172319867.png)
 
+
+### ShareToEagle
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/ShareToEagle.md
+```
+
+- Author：熊猫别熬夜
+- Description：可选中 Excalidraw 中局部元素发送到 Eagle，已集合到EagleToExcalidraw脚本中，该脚本单独将此功能分离出来。
+	- ![File-20240817110840973.png](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318933.png)
+
 ## 社区分享的脚本
 
 ### 统计选中图层字数 (Word Counter)
