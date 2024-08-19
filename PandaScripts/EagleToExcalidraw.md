@@ -9,6 +9,13 @@ if (!settings["Eagle Images Path"]) {
     };
     ea.setScriptSettings(settings);
 }
+if (!settings["saveFormat"]) {
+    settings["saveFormat"] = {
+        "value": "svg",
+        "hidden": true
+    };
+    ea.setScriptSettings(settings);
+};
 
 const path = require('path');
 const fs = require("fs");
@@ -81,6 +88,7 @@ if (selectedEls.length === 1) {
         "folderId": "" // 图片将会添加到指定文件夹的Eagle的FolderID
     };
     let returnLinkEnabled = true;
+    let saveFormat = settings["saveFormat"].value;
     // 配置按钮
     const customControls = (container) => {
         new ea.obsidian.Setting(container)
@@ -102,33 +110,30 @@ if (selectedEls.length === 1) {
                         data.tags = value.split(','); // 逗号分隔的字符串转数组
                     });
             });
+        // 添加下拉菜单选择格式
+        new ea.obsidian.Setting(container)
+            .setName(`文件格式`)
+            .setDesc(`选择导出的文件格式`)
+            .addDropdown(dropdown => {
+                dropdown
+                    .addOption('svg', 'SVG')
+                    .addOption('png', 'PNG')
+                    .setValue(saveFormat) // 默认值为SVG
+                    .onChange(value => {
+                        saveFormat = value; // 更新data对象中的格式属性
+                    });
+            });
         new ea.obsidian.Setting(container)
             .setName(`Ob链接`)
-            .setDesc(`启用或禁用Ob定位链接，需要Advanced URI插件`)
+            .setDesc(`启用或禁用Ob链接，需要Advanced URI插件`)
             .addToggle(toggle => {
                 toggle
                     .setValue(returnLinkEnabled) // 默认值为true
                     .onChange(value => {
                         returnLinkEnabled = value; // 更新data对象中的属性
-
                     });
             });
-
     };
-
-    if (returnLinkEnabled) {
-        const vaultName = app.vault.getName();
-        const activeFile = app.workspace.getActiveFile();
-        const ctime = await app.vault.getAbstractFileByPath(activeFile.path).stat["ctime"];
-        const uidFormat = "YYYYMMDDhhmmssSSS";
-        let adURI = "";
-        await app.fileManager.processFrontMatter(activeFile, fm => {
-            adURI = fm.uid ? fm.uid : moment(ctime).format(uidFormat);
-            fm.uid = moment(ctime).format(uidFormat);
-        });
-        await ea.addElementsToView();
-        data.website = `obsidian://advanced-uri?vault=${vaultName}&uid=${adURI}`;
-    }
 
     let isSend = false;
     data.annotation = await utils.inputPrompt(
@@ -147,6 +152,25 @@ if (selectedEls.length === 1) {
     );
     if (!isSend) return;
 
+    settings["saveFormat"].value = saveFormat;
+    if (saveFormat === "png") {
+        data.url = await convertSvgToPng(base64);
+    }
+
+    if (returnLinkEnabled) {
+        const vaultName = app.vault.getName();
+        const activeFile = app.workspace.getActiveFile();
+        const ctime = await app.vault.getAbstractFileByPath(activeFile.path).stat["ctime"];
+        const uidFormat = "YYYYMMDDhhmmssSSS";
+        let adURI = "";
+        await app.fileManager.processFrontMatter(activeFile, fm => {
+            adURI = fm.uid ? fm.uid : moment(ctime).format(uidFormat);
+            fm.uid = moment(ctime).format(uidFormat);
+        });
+        await ea.addElementsToView();
+        data.website = `obsidian://advanced-uri?vault=${vaultName}&uid=${adURI}`;
+    }
+
 
     const requestOptions = {
         method: 'POST',
@@ -154,7 +178,6 @@ if (selectedEls.length === 1) {
         redirect: 'follow'
     };
 
-    let response;
     fetch("http://localhost:41595/api/item/addFromURL", requestOptions)
         .then(response => response.json())
         .then(result => {
@@ -433,7 +456,7 @@ el.ondrop = async function (event) {
         for (let file of event.dataTransfer.files) {
             let directoryPath = file.path;
             console.log(directoryPath);
-            if (!directoryPath) continue;            
+            if (!directoryPath) continue;
             console.log(`获取路径：${directoryPath}`);
 
             // 清空插入的环境变量
@@ -677,3 +700,28 @@ el.ondrop = async function (event) {
     }
 };
 new Notice("✅EagleToExcalidraw脚本已启动！");
+
+function convertSvgToPng(base64) {
+    return new Promise((resolve, reject) => {
+        new Notice("正在转换SVG为PNG...");
+        const img = new Image();
+        img.src = base64;
+        img.onload = function () {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            canvas.toBlob(function (blob) {
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = function () {
+                    resolve(reader.result); // 返回base64数据
+                };
+                reader.onerror = reject;
+            });
+        };
+        img.onerror = reject;
+    });
+}
+
