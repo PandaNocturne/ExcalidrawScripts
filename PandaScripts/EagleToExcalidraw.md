@@ -16,6 +16,13 @@ if (!settings["Eagle→Excalidraw Tag"]) {
     };
     ea.setScriptSettings(settings);
 };
+if (!settings["Don't stop Eagle→Excalidraw"]) {
+    settings["Don't stop Eagle→Excalidraw"] = {
+        "value": false,
+        "description": "直接启动Eagle→Excalidraw模式，不要询问我为什么。"
+    };
+    ea.setScriptSettings(settings);
+};
 const path = require('path');
 const fs = require("fs");
 // let api = ea.getExcalidrawAPI();
@@ -254,13 +261,15 @@ if (selectedEls.length === 1) {
     return;
 }
 
-const options = ["✅启动EagleToExcalidraw模式", "❌取消EagleToExcalidraw模式"];
-const option = await utils.suggester(options, options);
-if (!option) return;
-if (option === "❌取消EagleToExcalidraw模式") {
-    el.ondrop = null;
-    new Notice("❌EagleToExcalidraw模式已取消！");
-    return;
+if (!settings["Don't stop Eagle→Excalidraw"].value) {
+    const options = ["✅启动EagleToExcalidraw模式", "❌取消EagleToExcalidraw模式"];
+    const option = await utils.suggester(options, options);
+    if (!option) return;
+    if (option === "❌取消EagleToExcalidraw模式") {
+        el.ondrop = null;
+        new Notice("❌EagleToExcalidraw模式已取消！");
+        return;
+    }
 }
 
 // 对于从Eagle拖拽过来的文件，以Eagle文件夹名命名，根据后缀名来创建不同的拖拽形式
