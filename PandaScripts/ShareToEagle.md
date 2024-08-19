@@ -2,13 +2,21 @@
  * @Author: 熊猫别熬夜 
  * @Date: 2024-08-19 00:32:03 
  * @Last Modified by: 熊猫别熬夜
- * @Last Modified time: 2024-08-20 00:04:47
+ * @Last Modified time: 2024-08-20 01:45:29
  */
 let settings = ea.getScriptSettings();
 // 加载默认值
 if (!settings["saveFormat"]) {
   settings["saveFormat"] = {
     "value": "svg",
+    "hidden": true
+  };
+  ea.setScriptSettings(settings);
+};
+
+if (!settings["scale"]) {
+  settings["scale"] = {
+    "value": 4,
     "hidden": true
   };
   ea.setScriptSettings(settings);
@@ -57,6 +65,7 @@ const data = {
 };
 let returnLinkEnabled = true;
 let saveFormat = settings["saveFormat"].value;
+let scale = settings["scale"].value;
 // 配置按钮
 const customControls = (container) => {
   new ea.obsidian.Setting(container)
@@ -91,6 +100,48 @@ const customControls = (container) => {
           saveFormat = value; // 更新data对象中的格式属性
         });
     });
+
+  // 添加数值框用于调整scale，带有上下调整数字的按钮
+  new ea.obsidian.Setting(container)
+    .setName(`缩放比例`)
+    .setDesc(`调整导出PNG的缩放比例，取值范围为(0,10]`)
+    .addText(text => {
+      text
+        .setValue(scale.toFixed(3).replace(/\.?0+$/, '')) // 默认值，最多保留3位小数
+        .onChange(value => {
+          let newValue = parseFloat(value);
+          if (!isNaN(newValue) && newValue > 0 && newValue <= 10) {
+            scale = newValue; // 更新scale值
+          } else {
+            // text.setValue(scale.toFixed(3).replace(/\.?0+$/, '')); // 恢复为有效值
+          }
+        });
+
+      // 设置输入框宽度
+      text.inputEl.style.width = '3rem';
+
+      // 添加上下调整数字的按钮
+      const incrementButton = document.createElement('button');
+      incrementButton.textContent = '+';
+      incrementButton.addEventListener('click', () => {
+        let step = scale > 1 ? 1 : 0.1;
+        let newValue = Math.min(scale + step, 10);
+        scale = parseFloat(newValue.toFixed(3)); // 更新scale值并保留最多3位小数
+        text.setValue(scale.toFixed(3).replace(/\.?0+$/, '')); // 更新数值框
+      });
+
+      const decrementButton = document.createElement('button');
+      decrementButton.textContent = '-';
+      decrementButton.addEventListener('click', () => {
+        let step = scale > 1 ? 1 : 0.1;
+        let newValue = Math.max(scale - step, 0.1);
+        scale = parseFloat(newValue.toFixed(3)); // 更新scale值并保留最多3位小数
+        text.setValue(scale.toFixed(3).replace(/\.?0+$/, '')); // 更新数值框
+      });
+      text.inputEl.parentElement.appendChild(decrementButton);
+      text.inputEl.parentElement.appendChild(incrementButton);
+    });
+
   new ea.obsidian.Setting(container)
     .setName(`Ob链接`)
     .setDesc(`启用或禁用Ob链接，需要Advanced URI插件`)
@@ -121,8 +172,9 @@ data.annotation = await utils.inputPrompt(
 if (!isSend) return;
 
 settings["saveFormat"].value = saveFormat;
+settings["scale"].value = scale;
 if (saveFormat === "png") {
-  data.url = await convertSvgToPng(base64);
+  data.url = await convertSvgToPng(base64, scale);
 }
 
 if (returnLinkEnabled) {
@@ -154,16 +206,17 @@ fetch("http://localhost:41595/api/item/addFromURL", requestOptions)
   })
   .catch(error => console.log('error', error));
 
-function convertSvgToPng(base64) {
+function convertSvgToPng(base64, scale = 3) {
   return new Promise((resolve, reject) => {
     new Notice("正在转换SVG为PNG...");
     const img = new Image();
     img.src = base64;
     img.onload = function () {
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
       const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
       canvas.toBlob(function (blob) {
         const reader = new FileReader();

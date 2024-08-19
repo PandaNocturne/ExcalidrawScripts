@@ -9,14 +9,6 @@ if (!settings["Eagle Images Path"]) {
     };
     ea.setScriptSettings(settings);
 }
-if (!settings["saveFormat"]) {
-    settings["saveFormat"] = {
-        "value": "svg",
-        "hidden": true
-    };
-    ea.setScriptSettings(settings);
-};
-
 const path = require('path');
 const fs = require("fs");
 // let api = ea.getExcalidrawAPI();
@@ -45,8 +37,24 @@ if (selectedEls.length === 1) {
 
     return;
 } else if (selectedEls.length > 1) {
+    // 加载默认值
+    if (!settings["saveFormat"]) {
+        settings["saveFormat"] = {
+            "value": "svg",
+            "hidden": true
+        };
+        ea.setScriptSettings(settings);
+    };
+
+    if (!settings["scale"]) {
+        settings["scale"] = {
+            "value": 4,
+            "hidden": true
+        };
+        ea.setScriptSettings(settings);
+    };
     // 获取选中元素否则为全部元素
-    // let selectedEls = ea.getViewSelectedElements();
+    let selectedEls = ea.getViewSelectedElements();
     const allEls = ea.getViewElements();
 
     if (selectedEls.length === 0) {
@@ -89,6 +97,7 @@ if (selectedEls.length === 1) {
     };
     let returnLinkEnabled = true;
     let saveFormat = settings["saveFormat"].value;
+    let scale = settings["scale"].value;
     // 配置按钮
     const customControls = (container) => {
         new ea.obsidian.Setting(container)
@@ -123,6 +132,48 @@ if (selectedEls.length === 1) {
                         saveFormat = value; // 更新data对象中的格式属性
                     });
             });
+
+        // 添加数值框用于调整scale，带有上下调整数字的按钮
+        new ea.obsidian.Setting(container)
+            .setName(`缩放比例`)
+            .setDesc(`该选项只对PNG格式生效，调整缩放比例，取值范围为(0,10]`)
+            .addText(text => {
+                text
+                    .setValue(scale.toFixed(3).replace(/\.?0+$/, '')) // 默认值，最多保留3位小数
+                    .onChange(value => {
+                        let newValue = parseFloat(value);
+                        if (!isNaN(newValue) && newValue > 0 && newValue <= 10) {
+                            scale = newValue; // 更新scale值
+                        } else {
+                            // text.setValue(scale.toFixed(3).replace(/\.?0+$/, '')); // 恢复为有效值
+                        }
+                    });
+
+                // 设置输入框宽度
+                text.inputEl.style.width = '3rem';
+
+                // 添加上下调整数字的按钮
+                const incrementButton = document.createElement('button');
+                incrementButton.textContent = '+';
+                incrementButton.addEventListener('click', () => {
+                    let step = scale > 1 ? 1 : 0.1;
+                    let newValue = Math.min(scale + step, 10);
+                    scale = parseFloat(newValue.toFixed(3)); // 更新scale值并保留最多3位小数
+                    text.setValue(scale.toFixed(3).replace(/\.?0+$/, '')); // 更新数值框
+                });
+
+                const decrementButton = document.createElement('button');
+                decrementButton.textContent = '-';
+                decrementButton.addEventListener('click', () => {
+                    let step = scale > 1 ? 1 : 0.1;
+                    let newValue = Math.max(scale - step, 0.1);
+                    scale = parseFloat(newValue.toFixed(3)); // 更新scale值并保留最多3位小数
+                    text.setValue(scale.toFixed(3).replace(/\.?0+$/, '')); // 更新数值框
+                });
+                text.inputEl.parentElement.appendChild(decrementButton);
+                text.inputEl.parentElement.appendChild(incrementButton);
+            });
+
         new ea.obsidian.Setting(container)
             .setName(`Ob链接`)
             .setDesc(`启用或禁用Ob链接，需要Advanced URI插件`)
@@ -153,8 +204,9 @@ if (selectedEls.length === 1) {
     if (!isSend) return;
 
     settings["saveFormat"].value = saveFormat;
+    settings["scale"].value = scale;
     if (saveFormat === "png") {
-        data.url = await convertSvgToPng(base64);
+        data.url = await convertSvgToPng(base64, scale);
     }
 
     if (returnLinkEnabled) {
@@ -185,6 +237,7 @@ if (selectedEls.length === 1) {
             new Notice("📤已成功发送到Eagle！"); // 成功后显示通知
         })
         .catch(error => console.log('error', error));
+
 
     return;
 }
