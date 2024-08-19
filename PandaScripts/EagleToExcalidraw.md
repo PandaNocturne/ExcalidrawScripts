@@ -753,17 +753,17 @@ el.ondrop = async function (event) {
     }
 };
 new Notice("✅EagleToExcalidraw脚本已启动！");
-
-function convertSvgToPng(base64) {
+function convertSvgToPng(base64, scale = 3) {
     return new Promise((resolve, reject) => {
         new Notice("正在转换SVG为PNG...");
         const img = new Image();
         img.src = base64;
         img.onload = function () {
             const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
             const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
             ctx.drawImage(img, 0, 0);
             canvas.toBlob(function (blob) {
                 const reader = new FileReader();
@@ -777,4 +777,3 @@ function convertSvgToPng(base64) {
         img.onerror = reject;
     });
 }
-
