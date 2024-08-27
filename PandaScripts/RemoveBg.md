@@ -2,10 +2,10 @@
  * @Author: 熊猫别熬夜 
  * @Date: 2024-08-26 12:37:13 
  * @Last Modified by: 熊猫别熬夜
- * @Last Modified time: 2024-08-27 15:04:36
+ * @Last Modified time: 2024-08-27 15:13:13
  */
 let settings = ea.getScriptSettings();
-if (!settings["Remove.bg API Key"].value) {
+if (!settings["Remove.bg API Key"]?.value) {
   // 自动打开https://www.remove.bg/zh/api#sample-code网站
   window.open("https://www.remove.bg/zh/api#sample-code", "_blank");
   const key = await utils.inputPrompt("请在 script settings 中设置Remove.bg API Key", "请在https://www.remove.bg/zh/api#sample-code中获取API Key");
@@ -54,7 +54,7 @@ const typeList = ['auto', 'car', 'product', 'person', 'animal', 'graphic', 'tran
 const typeList2 = ['自动识别', '汽车', '物品', '人像', '动物', '图形', '交通'];
 
 // 图片位置
-const positionList = ['相邻', '相同', '覆盖'];
+const positionList = ['相邻', '相同', '替换'];
 let position = positionList[0];
 // 图片背景
 let isbg = true;
@@ -165,13 +165,12 @@ for (let img of imgs) {
   const rbgResultData = await removeBg(fileBlob, inputdata);
 
   // 图形覆盖
-  if (position === '覆盖') {
+  if (position === positionList[2]) {
     await app.vault.adapter.write(imgPath, Buffer.from(rbgResultData));
     await new Promise((resolve) => setTimeout(resolve, 200));
     await app.commands.executeCommandById("obsidian-excalidraw-plugin:save");
     continue;
   }
-
   const newFilePath = path.join(path.dirname(imgPath), newFileName);
   await app.vault.adapter.write(newFilePath, Buffer.from(rbgResultData));
   await new Promise((resolve) => setTimeout(resolve, 200));
@@ -185,10 +184,10 @@ for (let img of imgs) {
   el.angle = img.angle;
   el.opacity = img.opacity;
   el.link = img.link;
-  if (position === '相邻') {
+  if (position === positionList[0]) {
     el.x = img.x + img.width + 10;
     el.y = img.y;
-  } else if (position === '相同') {
+  } else if (position === positionList[1]) {
     el.x = img.x;
     el.y = img.y;
   }
