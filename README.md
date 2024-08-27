@@ -170,6 +170,9 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Description：将选中的元素保存为 PNG 或者 SVG 格式本地文件，相当于网页版 Excalidraw 的导出仅选中图片。
 	- ![File-20240401094628708.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318639.gif)
 	- Tip: 如果未选择元素则自动选中画板内全部元素，以及如果选中的是 Frame 框架，则自动选择 Frame 内部所有元素。
+- ChangeLog：
+	- 24.08.21：更新了UI
+	- ![[Pasted image 20240821203628.png]]
 
 ## 画布演示
 

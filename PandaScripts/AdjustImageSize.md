@@ -2,7 +2,7 @@
  * @Author: 熊猫别熬夜 
  * @Date: 2024-01-31 13:00:21 
  * @Last Modified by: 熊猫别熬夜
- * @Last Modified time: 2024-05-23 00:16:21
+ * @Last Modified time: 2024-08-21 20:45:40
  */
 await ea.addElementsToView();
 // 获取选中的元素
@@ -58,9 +58,9 @@ if (option === options[2]) {
         }
 
     }
-    // 完成编辑
-    ea.copyViewElementsToEAforEditing(selectedEls);
-    ea.addElementsToView();
 
+    // 完成编辑
+    await ea.copyViewElementsToEAforEditing(selectedEls);
+    await ea.addElementsToView();
 }
 
