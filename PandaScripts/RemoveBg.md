@@ -2,17 +2,17 @@
  * @Author: 熊猫别熬夜 
  * @Date: 2024-08-26 12:37:13 
  * @Last Modified by: 熊猫别熬夜
- * @Last Modified time: 2024-08-27 15:13:13
+ * @Last Modified time: 2024-08-28 11:48:06
  */
 let settings = ea.getScriptSettings();
 if (!settings["Remove.bg API Key"]?.value) {
-  // 自动打开https://www.remove.bg/zh/api#sample-code网站
-  window.open("https://www.remove.bg/zh/api#sample-code", "_blank");
-  const key = await utils.inputPrompt("请在 script settings 中设置Remove.bg API Key", "请在https://www.remove.bg/zh/api#sample-code中获取API Key");
+  // 自动打开https://www.remove.bg/zh/api网站
+  window.open("https://www.remove.bg/zh/api", "_blank");
+  const key = await utils.inputPrompt("请在 script settings 中设置Remove.bg API Key", "请在https://www.remove.bg/zh/api中获取API Key");
   settings = {
     "Remove.bg API Key": {
       value: key || "",
-      description: "请在https://www.remove.bg/zh/api#sample-code中获取API Key"
+      description: "请在https://www.remove.bg/zh/api中获取API Key"
     },
   };
   ea.setScriptSettings(settings);
@@ -27,13 +27,13 @@ const imgs = ea.getViewSelectedElements().filter(el => el.type === "image");
 if (imgs.length === 0) {
   new Notice("No image found");
 
-  const key = await utils.inputPrompt("Remove.bg API Key", "请在https://www.remove.bg/zh/api#sample-code中获取API Key", settings["Remove.bg API Key"].value);
+  const key = await utils.inputPrompt("Remove.bg API Key", "请在https://www.remove.bg/zh/api中获取API Key", settings["Remove.bg API Key"].value);
   if (!key) return;
 
   settings = {
     "Remove.bg API Key": {
       value: key,
-      description: "请在https://www.remove.bg/zh/api#sample-code中获取API Key"
+      description: "请在https://www.remove.bg/zh/api中获取API Key"
     },
   };
   ea.setScriptSettings(settings);
@@ -82,7 +82,7 @@ const customControls = (container) => {
       dropdown
         .setValue(typeList[0])
         .onChange(value => {
-          inputdata.type = typeList[typeList2.indexOf(value)];
+          inputdata.type = value;
         });
     });
 
@@ -171,8 +171,9 @@ for (let img of imgs) {
     await app.commands.executeCommandById("obsidian-excalidraw-plugin:save");
     continue;
   }
-  const newFilePath = path.join(path.dirname(imgPath), newFileName);
-  await app.vault.adapter.write(newFilePath, Buffer.from(rbgResultData));
+  const newFilePath = path.join(path.dirname(filePath), newFileName);
+  // await app.vault.adapter.write(newFilePath, Buffer.from(rbgResultData));
+  await fs.writeFile(newFilePath, Buffer.from(rbgResultData));
   await new Promise((resolve) => setTimeout(resolve, 200));
 
   // 获取图片在Excalidraw的位置，使removebg图位于它右侧

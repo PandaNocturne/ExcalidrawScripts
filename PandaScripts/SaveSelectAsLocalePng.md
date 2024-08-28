@@ -101,15 +101,21 @@ const customControls = (container) => {
 };
 
 let isSend = false;
+let isCopy = false;
 const fileName = await utils.inputPrompt(
   "文件名",
   "1111",
   `EX-${timestamp}`,
   [
     {
+      caption: "Copy as WiKi",
+      action: () => { isCopy = isSend = true; return; }
+    },
+    {
       caption: "Confirm",
       action: () => { isSend = true; return; }
     },
+
   ],
   1,
   false,
@@ -119,7 +125,6 @@ if (!isSend) return;
 
 settings["saveFormat"].value = saveFormat;
 settings["scale"].value = scale;
-
 
 if (saveFormat === "png") {
   ea.targetView.svg(ea.targetView.getScene(true), undefined, true).then(svg => {
@@ -139,7 +144,7 @@ if (saveFormat === "png") {
       ctx.drawImage(img, 0, 0);
       // 将PNG数据导出到本地文件
       canvas.toBlob(function (blob) {
-        saveBlobToFile(blob, `${fileName}.png`);
+        saveBlobToFile(blob, `${fileName}.png`, isCopy);
       });
     };
   });
@@ -148,17 +153,47 @@ if (saveFormat === "png") {
   ea.targetView.svg(ea.targetView.getScene(true), undefined, true).then(svg => {
     // 将SVG数据导出到本地文件
     const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-    saveBlobToFile(blob, `${fileName}.svg`);
+    saveBlobToFile(blob, `${fileName}.svg`, isCopy);
   });
 }
+
 // 将Blob对象保存为文件
-function saveBlobToFile(blob, fileName) {
+async function saveBlobToFile(blob, fileName, bool = false) {
+  // 如果是复制操作，保存到默认路径
+  if (bool) {
+    // 获取库的基本路径
+    const basePath = (app.vault.adapter).getBasePath();
+    // 附件路径
+    const assetsPath = await app.vault.config.attachmentFolderPath;
+    copyToClipboard(`![[${fileName}]]`);
+    const filePath = `${assetsPath}/${fileName}`;
+    console.log(filePath)
+    // const file = new File([blob], filePath, { type: blob.type });
+    const arrayBuffer = await blob.arrayBuffer(); // 将Blob转换为ArrayBuffer
+    await app.vault.adapter.writeBinary(filePath, arrayBuffer); // 将ArrayBuffer写入本地文件
+    return;
+  }
   const a = document.createElement('a');
   document.body.appendChild(a);
   a.style = 'display: none';
   const url = window.URL.createObjectURL(blob);
   a.href = url;
+
   a.download = fileName;
   a.click();
   window.URL.revokeObjectURL(url);
+}
+
+function copyToClipboard(extrTexts) {
+  const txtArea = document.createElement('textarea');
+  txtArea.value = extrTexts;
+  document.body.appendChild(txtArea);
+  txtArea.select();
+  if (document.execCommand('copy')) {
+    console.log('copy to clipboard.');
+    new Notice("Image WiKi Copy to clipboard.");
+  } else {
+    console.log('fail to copy.');
+  }
+  document.body.removeChild(txtArea);
 }

@@ -172,7 +172,20 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 	- Tip: 如果未选择元素则自动选中画板内全部元素，以及如果选中的是 Frame 框架，则自动选择 Frame 内部所有元素。
 - ChangeLog：
 	- 24.08.21：更新了UI
-	- ![[Pasted image 20240821203628.png]]
+		- ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302056.png!pkmer)
+	- 24.08.28：添加`Copy as Wiki`按钮，将图片自动生成在ob的默认附件位置，并复制`![[filename]]`文本至剪切板，相较于自带的`Copy to clipboard as PNG/SVG`，可随时调节PNG的缩放比例，调整清晰度。
+		- ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302700.png!pkmer)
+
+### RemoveBg
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/RemoveBg.md
+```
+
+- Author：熊猫别熬夜
+- PKMerDoc：待写
+- Description：采用[Remove.bg](https://www.remove.bg/zh/g/developers)的API来对Excalidraw中的图片进行抠图。
+	- ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302659.png!pkmer)
 
 ## 画布演示
 
