@@ -1,13 +1,13 @@
 let settings = ea.getScriptSettings();
 // 加载默认值
-if (!settings["saveFormat"]) {
+if (!settings["saveFormat"]?.value) {
   settings["saveFormat"] = {
     "value": "svg",
     "hidden": true
   };
   ea.setScriptSettings(settings);
 };
-if (!settings["scale"]) {
+if (!settings["scale"]?.value) {
   settings["scale"] = {
     "value": 4,
     "hidden": true
@@ -101,6 +101,7 @@ const customControls = (container) => {
 };
 
 let isSend = false;
+let isCopyAsWiki = false;
 let isCopy = false;
 const fileName = await utils.inputPrompt(
   "文件名",
@@ -108,8 +109,12 @@ const fileName = await utils.inputPrompt(
   `EX-${timestamp}`,
   [
     {
-      caption: "Copy as WiKi",
+      caption: "Copy to Clipboard",
       action: () => { isCopy = isSend = true; return; }
+    },
+    {
+      caption: "Copy as WiKi",
+      action: () => { isCopyAsWiki = isSend = true; return; }
     },
     {
       caption: "Confirm",
@@ -123,9 +128,9 @@ const fileName = await utils.inputPrompt(
 );
 if (!isSend) return;
 
-settings["saveFormat"].value = saveFormat;
+settings["saveFormat"].value = (!isCopy) ? saveFormat : "png";
 settings["scale"].value = scale;
-
+ea.setScriptSettings(settings);
 if (saveFormat === "png") {
   ea.targetView.svg(ea.targetView.getScene(true), undefined, true).then(svg => {
     let base64 = `data:image/svg+xml;base64,${btoa(
@@ -143,8 +148,12 @@ if (saveFormat === "png") {
       ctx.scale(scale, scale);
       ctx.drawImage(img, 0, 0);
       // 将PNG数据导出到本地文件
-      canvas.toBlob(function (blob) {
-        saveBlobToFile(blob, `${fileName}.png`, isCopy);
+      canvas.toBlob(async function (blob) {
+        if (isCopy) {
+          await copyImageToClipboard(blob); // 复制图像到剪贴板
+        } else {
+          saveBlobToFile(blob, `${fileName}.png`, isCopyAsWiki);
+        }
       });
     };
   });
@@ -153,7 +162,7 @@ if (saveFormat === "png") {
   ea.targetView.svg(ea.targetView.getScene(true), undefined, true).then(svg => {
     // 将SVG数据导出到本地文件
     const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-    saveBlobToFile(blob, `${fileName}.svg`, isCopy);
+    saveBlobToFile(blob, `${fileName}.svg`, isCopyAsWiki);
   });
 }
 
@@ -167,7 +176,7 @@ async function saveBlobToFile(blob, fileName, bool = false) {
     const assetsPath = await app.vault.config.attachmentFolderPath;
     copyToClipboard(`![[${fileName}]]`);
     const filePath = `${assetsPath}/${fileName}`;
-    console.log(filePath)
+    console.log(filePath);
     // const file = new File([blob], filePath, { type: blob.type });
     const arrayBuffer = await blob.arrayBuffer(); // 将Blob转换为ArrayBuffer
     await app.vault.adapter.writeBinary(filePath, arrayBuffer); // 将ArrayBuffer写入本地文件
@@ -196,4 +205,15 @@ function copyToClipboard(extrTexts) {
     console.log('fail to copy.');
   }
   document.body.removeChild(txtArea);
+}
+
+// 复制图像到剪贴板
+async function copyImageToClipboard(blob) {
+  try {
+    const item = new ClipboardItem({ 'image/png': blob });
+    await navigator.clipboard.write([item]);
+    new Notice("Image copied to clipboard.");
+  } catch (err) {
+    console.error('Failed to copy image: ', err);
+  }
 }
