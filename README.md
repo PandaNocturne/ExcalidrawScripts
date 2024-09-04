@@ -311,7 +311,7 @@ https://raw.githubusercontent.com/wish5115/my-softs/main/Excalidraw/Words%20Coun
 ## CreateAndUpdateLinearNotes
 
 ```excalidraw-script-install
-
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/TestScripts/CreateAndUpdateLinearNotes.md
 ```
 
 - Author：熊猫别熬夜
@@ -321,7 +321,7 @@ https://raw.githubusercontent.com/wish5115/my-softs/main/Excalidraw/Words%20Coun
 ## FrameMindmapLayout
 
 ```excalidraw-script-install
-
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/TestScripts/FrameMindmapLayout.md
 ```
 
 - Author：熊猫别熬夜
