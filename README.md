@@ -173,8 +173,9 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - ChangeLog：
 	- 24.08.21：更新了UI
 		- ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302056.png!pkmer)
-	- 24.08.28：添加`Copy as Wiki`按钮，将图片自动生成在ob的默认附件位置，并复制`![[filename]]`文本至剪切板，相较于自带的`Copy to clipboard as PNG/SVG`，可随时调节PNG的缩放比例，调整清晰度。
-		- ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302700.png!pkmer)
+	- 24.08.28：添加`Copy to Clipboard`和`Copy as Wiki`按钮，①将PNG(SVG不可行)图片复制剪切板；②将图片自动生成在ob的默认附件位置，并复制`![[filename]]`文本至剪切板。
+	  相较于自带的`Copy to clipboard as PNG/SVG`，可随时调节PNG的缩放比例，调整清晰度。
+		- ![Excalidraw.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409041948886.png)
 
 ### RemoveBg
 
@@ -291,9 +292,9 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 	- ![PixPin_2024-08-18_12-37-11.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408181239290.gif)
 	- ![PixPin_2024-08-18_12-37-40.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408181239775.gif)
 
-## 社区分享的脚本
+# 社区分享的脚本
 
-### 统计选中图层字数 (Word Counter)
+## 统计选中图层字数 (Word Counter)
 
 ```excalidraw-script-install
 https://raw.githubusercontent.com/wish5115/my-softs/main/Excalidraw/Words%20Counter.md
@@ -305,3 +306,30 @@ https://raw.githubusercontent.com/wish5115/my-softs/main/Excalidraw/Words%20Coun
 	- ![File-20240709110928305.png](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172319398.png)
 	- 统计逻辑：一个英文单词算一个，一个中文文字算一个，一个空格或标点符号算一个。
 
+# 测试性脚本
+
+## CreateAndUpdateLinearNotes
+
+```excalidraw-script-install
+
+```
+
+- Author：熊猫别熬夜
+- PKMerDoc：[PKMer_自定义 Excalidraw 脚本 - 制作 Excalidraw 悬浮大纲以及一键生成线型笔记]( https://pkmer.cn/show/20231029232811 )
+- Description：将 Excalidraw 的画板内容制作线型笔记，一开始尝试添加特殊文本编号按大小排序来制作 Excalidraw 的悬浮大纲，后来通过特定的组和 Frame 区域来用于构建 Excalidraw 的连接：分 Frame、Group、Link 的连接形式一键制作线型笔记，并把嵌入的 Frame 笔记给嵌入到线型笔记中来，排除省略了只包含少量的元素的 Frame 或者 Group 让生成的线型笔记更加简洁。仅仅是一个尝试，不能保证大纲和线型笔记的效果达到非常完美，特别是排序只是从大到小的排序，而不是针对列表的顺序排序，存在很多漏洞。
+
+## FrameMindmapLayout
+
+```excalidraw-script-install
+
+```
+
+- Author：熊猫别熬夜
+- Doc：无文档
+- Description：
+	- 设置了一个 frame 容器，当该 frame 的名称以 `mind` 结尾时，脚本会排列组合容器内连接的元素。
+		- ![2024-02-23_自定义Excalidraw脚本-修改MindMap Format设置思维导图Frame容器.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409042003683.gif)
+	- 优化 Frame + 子节点自动布局：![2024-02-23_自定义Excalidraw脚本-修改MindMap Format设置思维导图Frame容器.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409042004865.png)
+		1. 选择父节点，自动排列子节点，用起来方便点，不过思维导图不打算咋用  
+		2. 最主要的是第二个 Frame 导图，为了章节的递进，以及添加特殊名称入 Mind 后自动排版  
+			1. 可以设立多个导图，主要用来表示 Frame 的递进关系
