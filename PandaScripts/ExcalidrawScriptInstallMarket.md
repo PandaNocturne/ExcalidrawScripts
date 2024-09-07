@@ -38,6 +38,8 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
       await this.loadDocument(url);
     });
 
+
+
     // Editor 按钮点击事件
     editorButtonEl.addEventListener('click', async () => {
       const defaultUrls = this.defaultUrls.map(item => `${item.name}|${item.url}`).join('\n');
@@ -169,6 +171,14 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
       .doc-container {
         overflow: auto;
         height: 800px;
+        user-select: text;
+        a{
+          cursor: pointer;
+        }
+        img{
+          
+          cursor: zoom-in;
+        }
       }
     }
     `;
