@@ -2,7 +2,7 @@
  * @Author: 熊猫别熬夜 
  * @Date: 2024-08-26 12:37:13 
  * @Last Modified by: 熊猫别熬夜
- * @Last Modified time: 2024-08-28 11:48:06
+ * @Last Modified time: 2024-09-05 00:00:13
  */
 let settings = ea.getScriptSettings();
 if (!settings["Remove.bg API Key"]?.value) {
