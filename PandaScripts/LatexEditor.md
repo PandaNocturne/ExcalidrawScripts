@@ -177,7 +177,6 @@ switch (imgType) {
     // ea.addElementsToView(false, false);
     break;
   case "image":
-
     break;
 }
 
