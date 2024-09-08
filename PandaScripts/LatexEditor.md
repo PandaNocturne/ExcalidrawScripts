@@ -75,53 +75,64 @@ class LatexEditorModal extends ea.obsidian.Modal {
   }
 
   addStyles() {
-    //   const style = document.createElement('style');
-    //   style.textContent = `      
-    //   .modal-container:has(.excalidraw-latex-editor) {
-    //     .latex-preview {
-    //       border: 1px solid #ccc;
-    //       padding: 10px;
-    //       margin-bottom: 10px;
-    //       background-color: #f9f9f9;
-    //       color: black;
-    //       border-radius: 4px;
-    //       min-height: 80px;
-    //       overflow: auto;
-    //     }
-    //     textarea {
-    //       width: 100%;
-    //       height: 100px;
-    //       padding: 10px;
-    //       box-sizing: border-box;
-    //       border: 1px solid #ccc;
-    //       border-radius: 4px;
-    //       margin-bottom: 10px;
-    //       font-family: monospace;
-    //     }
+      const style = document.createElement('style');
+      style.textContent = `    
+      .modal:has(.excalidraw-latex-editor) {
+        min-width: 800px;
+        overflow: hidden;
 
-    //     .button-container {
-    //       display: flex;
-    //       justify-content: space-between;
-    //     }
+        div.latex-container {
+          display: flex;
+          justify-content: space-between;
+          flex-direction: row;
+          align-items: stretch;
+          min-height: 200px;
+          padding: 5px;
 
-    //     button {
-    //       flex: 1;
-    //       margin: 5px;
-    //       padding: 10px;
-    //       align-items: center;
-    //       justify-content: center;
-    //       border: none;
-    //       border-radius: 4px;
-    //       cursor: pointer;
-    //       font-size: 16px;
-    //     }
+          .latex-preview {
 
-    //     button:hover {
-    //       background-color: #0056b3;
-    //     }
-    //   }
-    //   `;
-    //   document.head.appendChild(style);
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            color: black;
+            margin-right: 10px;
+            flex: 1;
+            padding: 0 5px 0 5px;
+            overflow: auto;
+
+            mjx-container {
+              text-align: left !important;
+            }
+          }
+
+          textarea {
+            flex: 1;
+            min-height: 200px;
+          }
+        }
+
+        .button-container {
+          display: flex;
+          justify-content: space-between;
+        }
+
+        button {
+          flex: 1;
+          margin: 5px;
+          padding: 10px;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 16px;
+        }
+
+        button:hover {
+          background-color: #0056b3;
+        }
+      }
+      `;
+      document.head.appendChild(style);
   }
 }
 
