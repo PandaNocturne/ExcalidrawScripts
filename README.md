@@ -1,3 +1,15 @@
+---
+uid: "20240318195141227"
+title: PandaScripts 脚本简单介绍
+aliases:
+  - PandaScripts 脚本简单介绍
+tags: []
+cssclasses: []
+created: 2024-03-18 19:51:41
+modified: 2024-09-08 09:14:25
+date: 2024-03-18
+---
+
 分享下使用 Obsidian 一年多折腾 Excalidraw 时写的 Excalidraw 脚本片段，GitHub 仓库：[熊猫别熬夜的 Excalidraw 代码片段](https://github.com/PandaNocturne/ExcalidrawScripts)，
 
 可通过 Excalidraw 插件的脚本代码块 (\`\`\`excalidraw-script-install) 来安装，里面放的是脚本 GitHub 的 RAW 链接，在 Obsidian 中会显示为按钮，脚本更新会自动检测，欢迎大家分享和反馈，脚本的详细介绍我都上传到 [PKMer](https://pkmer.cn/) 了。
@@ -33,6 +45,18 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/README.
 
 ## 实用脚本
 
+### Excalidraw Script Install Market
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/ExcalidrawScriptInstallMarket.md
+```
+
+- Author：熊猫别熬夜
+- PKMerDoc：
+- Description：方便你从非官方脚本市场的 Github 仓库中获取和管理 Excalidraw 脚本的小工具。通过这个脚本，你可以轻松安装、更新和编辑脚本市场的 URL 链接，并在不同的脚本市场之间快速切换。
+	- ![24.09.08_Excalidraw Script Install Market：轻松管理和获取 Excalidraw 脚本.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409080913130.png)
+	- ![24.09.08_Excalidraw Script Install Market：轻松管理和获取 Excalidraw 脚本.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409080914341.png)
+
 ### QuickSwitchFrame
 
 ```excalidraw-script-install
@@ -45,6 +69,16 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 	- ![File-20240426045317691.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318594.gif)
 
 ## 文档编辑
+
+### LatexEditor
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/LatexEditor.md
+```
+
+- Author：熊猫别熬夜
+- Description：可视化编辑 Lateχ公式。
+	- ![Excalidraw.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409080910652.png)
 
 ### QuickerInsertZKCard
 
@@ -116,8 +150,6 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 
 ### TextExtractor
 
-- [自定义 Excalidraw 脚本 - OCR 自动提取图片文字](https://pkmer.cn/show/20231115000252)
-
 ```excalidraw-script-install
 https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/TextExtractor.md
 ```
@@ -171,10 +203,10 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 	- ![File-20240401094628708.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318639.gif)
 	- Tip: 如果未选择元素则自动选中画板内全部元素，以及如果选中的是 Frame 框架，则自动选择 Frame 内部所有元素。
 - ChangeLog：
-	- 24.08.21：更新了UI
+	- 24.08.21：更新了 UI
 		- ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302056.png!pkmer)
-	- 24.08.28：添加`Copy to Clipboard`和`Copy as Wiki`按钮，①将PNG(SVG不可行)图片复制剪切板；②将图片自动生成在ob的默认附件位置，并复制`![[filename]]`文本至剪切板。
-	  相较于自带的`Copy to clipboard as PNG/SVG`，可随时调节PNG的缩放比例，调整清晰度。
+	- 24.08.28：添加 `Copy to Clipboard` 和 `Copy as Wiki` 按钮，①将 PNG(SVG 不可行) 图片复制剪切板；②将图片自动生成在 ob 的默认附件位置，并复制 `![[filename]]` 文本至剪切板。
+	  相较于自带的 `Copy to clipboard as PNG/SVG`，可随时调节 PNG 的缩放比例，调整清晰度。
 		- ![Excalidraw.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409041948886.png)
 
 ### RemoveBg
@@ -185,7 +217,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 
 - Author：熊猫别熬夜
 - PKMerDoc：待写
-- Description：采用[Remove.bg](https://www.remove.bg/zh/g/developers)的API来对Excalidraw中的图片进行抠图。
+- Description：采用 [Remove.bg](https://www.remove.bg/zh/g/developers) 的 API 来对 Excalidraw 中的图片进行抠图。
 	- ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302659.png!pkmer)
 
 ## 画布演示
@@ -279,7 +311,6 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 > - [ZoteroToEagle - by 熊猫别熬夜 - 动作信息 - Quicker](https://getquicker.net/Sharedaction?code=85b92307-2003-47bd-afea-08dc426a44c3)
 > 	- ![File-20240426045317722.png](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172319867.png)
 
-
 ### ShareToEagle
 
 ```excalidraw-script-install
@@ -287,7 +318,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 ```
 
 - Author：熊猫别熬夜
-- Description：可选中 Excalidraw 中局部元素发送到 Eagle，已集合到EagleToExcalidraw脚本中，该脚本单独将此功能分离出来，导入Eagle里面的格式是SVG，可在官方Excalidraw中还原并二次编辑。
+- Description：可选中 Excalidraw 中局部元素发送到 Eagle，已集合到 EagleToExcalidraw 脚本中，该脚本单独将此功能分离出来，导入 Eagle 里面的格式是 SVG，可在官方 Excalidraw 中还原并二次编辑。
 	- ![File-20240817110840973.png](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408181239889.png)
 	- ![PixPin_2024-08-18_12-37-11.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408181239290.gif)
 	- ![PixPin_2024-08-18_12-37-40.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408181239775.gif)
