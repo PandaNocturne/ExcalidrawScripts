@@ -17,6 +17,8 @@ for (let frameEl of frameEls) {
     }
   }
 
+  if (minX === Infinity || minY === Infinity || maxX === -Infinity || maxY === -Infinity) continue;
+
   // 更新frame的大小和位置
   frameEl.x = minX - 20;
   frameEl.y = minY - 20;
@@ -25,4 +27,4 @@ for (let frameEl of frameEls) {
   await ea.addElementsToView(false, false);
 }
 
-new Notice("Frame已自适应!",1000);
+new Notice("Frame已自适应!", 1000);
