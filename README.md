@@ -68,6 +68,18 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Description：提供一个 Frame 边框切换的提示框。
 	- ![File-20240426045317691.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318594.gif)
 
+
+### FameAutoSize
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FameAutoSize.md
+```
+
+- Author：熊猫别熬夜
+- Doc：null
+- Description：将“frame”的大小和位置自适应到其中包含的元素。
+	- ![24.06.18_Excalidraw脚本-Frame框架自适应大小.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409091251983.gif)
+
 ## 文档编辑
 
 ### LatexEditor

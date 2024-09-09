@@ -77,6 +77,7 @@ if (selectedFrameElements.length === 1) {
 	}
 	ea.copyViewElementsToEAforEditing(selectedFrameElements);
 	await ea.addElementsToView(false, true);
+
 } else if ((selectedFrameElements.length > 1)) {
 	let frameLinks = [];
 	for (el of selectedFrameElements) {
@@ -99,6 +100,7 @@ if (selectedFrameElements.length >= 1) {
 		}
 	});
 	await ea.addElementsToView();
+	return;
 }
 
 // ! 图片 OCR 或文本编辑
