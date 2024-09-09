@@ -6,7 +6,7 @@ aliases:
 tags: []
 cssclasses: []
 created: 2024-03-18 19:51:41
-modified: 2024-09-08 09:14:25
+modified: 2024-09-09 13:03:43
 date: 2024-03-18
 ---
 
@@ -68,8 +68,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Description：提供一个 Frame 边框切换的提示框。
 	- ![File-20240426045317691.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318594.gif)
 
-
-### FameAutoSize
+### FrameAutoSize
 
 ```excalidraw-script-install
 https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FameAutoSize.md
