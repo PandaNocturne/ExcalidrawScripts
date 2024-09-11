@@ -9,10 +9,9 @@ created: 2024-03-18 19:51:41
 modified: 2024-09-09 13:03:43
 date: 2024-03-18
 ---
+## 使用介绍
 
-分享下使用 Obsidian 一年多折腾 Excalidraw 时写的 Excalidraw 脚本片段，GitHub 仓库：[熊猫别熬夜的 Excalidraw 代码片段](https://github.com/PandaNocturne/ExcalidrawScripts)，
-
-可通过 Excalidraw 插件的脚本代码块 (\`\`\`excalidraw-script-install) 来安装，里面放的是脚本 GitHub 的 RAW 链接，在 Obsidian 中会显示为按钮，脚本更新会自动检测，欢迎大家分享和反馈，脚本的详细介绍我都上传到 [PKMer](https://pkmer.cn/) 了。
+通过 Excalidraw 插件的脚本代码块 (\`\`\`excalidraw-script-install) 来安装，里面放的是脚本 GitHub 的 RAW 链接，在 Obsidian 中会显示为按钮，脚本更新会自动检测，欢迎大家分享和反馈，脚本的详细介绍我都上传到 [PKMer](https://pkmer.cn/) 了。
 
 ![File-20240426045317569.png](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318704.png)
 
@@ -39,7 +38,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/README.
 
 > PS：之后我的脚本更新或者 BUG 修复，可能不会更新到网站，而是直接更新到 GitHub，因为这样对我来说比较方便点而且快速点。
 
-# PandaScripts 脚本简单介绍
+# PandaScripts 脚本
 
 > [Obsidian 插件：Excalidraw 完美的绘图工具](https://pkmer.cn/show/20230329145825)
 
