@@ -91,8 +91,64 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
 
     // 使用 Obsidian 的 Markdown 渲染功能
     ea.obsidian.MarkdownRenderer.renderMarkdown(docContent, docContainer, '', this);
+    // 添加折叠功能
+    this.addCollapseFunctionality(docContainer);
   }
+  addCollapseFunctionality(container) {
+    const headers = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const headerStack = [];
 
+    headers.forEach(header => {
+      const level = parseInt(header.tagName[1]);
+      const content = document.createElement('div');
+      let sibling = header.nextElementSibling;
+
+      while (sibling && (!/^H[1-6]$/.test(sibling.tagName) || parseInt(sibling.tagName[1]) > level)) {
+        const nextSibling = sibling.nextElementSibling;
+        content.appendChild(sibling);
+        sibling = nextSibling;
+      }
+
+      // 默认折叠 h2 及以下的标题
+      if (level >= 2) {
+        content.style.display = 'none';
+        header.classList.add('collapsed');
+      }
+
+      header.style.cursor = 'pointer';
+      header.classList.add('collapsible-header');
+      header.addEventListener('click', () => {
+        content.style.display = content.style.display === 'none' ? 'block' : 'none';
+        header.classList.toggle('collapsed');
+      });
+
+      if (headerStack.length > 0) {
+        const lastHeader = headerStack[headerStack.length - 1];
+        const lastLevel = parseInt(lastHeader.tagName[1]);
+
+        if (level > lastLevel) {
+          lastHeader.nextElementSibling.appendChild(header);
+          lastHeader.nextElementSibling.appendChild(content);
+        } else {
+          while (headerStack.length > 0 && parseInt(headerStack[headerStack.length - 1].tagName[1]) >= level) {
+            headerStack.pop();
+          }
+          if (headerStack.length > 0) {
+            headerStack[headerStack.length - 1].nextElementSibling.appendChild(header);
+            headerStack[headerStack.length - 1].nextElementSibling.appendChild(content);
+          } else {
+            container.appendChild(header);
+            container.appendChild(content);
+          }
+        }
+      } else {
+        container.appendChild(header);
+        container.appendChild(content);
+      }
+
+      headerStack.push(header);
+    });
+  }
   async fetchDocumentContent(url) {
     try {
       let response;
@@ -113,7 +169,7 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
   }
   addStyles() {
     const style = document.createElement('style');
-    style.textContent = `      
+    style.textContent = `
     div.modal:has(.excalidraw-script-market) {
       width: 900px;
       position: relative;
@@ -132,8 +188,8 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
         }
       }
 
-      .excalidraw-script-form-container {
 
+      .excalidraw-script-form-container {
         padding-bottom: 10px;
         border-bottom: 2px solid var(--interactive-accent);
 
@@ -160,7 +216,6 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
             flex: 0.2 1 100px;
           }
         }
-
       }
 
       .modal-close-button,
@@ -172,14 +227,39 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
         overflow: auto;
         height: 800px;
         user-select: text;
-        a{
+        a {
           cursor: pointer;
         }
-        img{
-          
+        img {
           cursor: zoom-in;
         }
       }
+
+      .collapsible-header {
+        position: relative;
+      }
+
+      .collapsible-header::after {
+        content: '◀';
+        position: absolute;
+        right: 10px;
+        font-size: 0.8em;
+        transform: rotate(0deg);
+        transition: transform 0.3s ease;
+      }
+
+      .collapsible-header.collapsed::after {
+        transform: rotate(-90deg);
+      }
+    }
+
+    .doc-container.excalidraw-script-market {
+      --h1-color: #ff8a78;
+      --h2-color: #fabe58;
+      --h3-color: #ffec8b;
+      --h4-color: #87d37c;
+      --h5-color: #89c4f4;
+      --h6-color: #c69eff;
     }
     `;
     document.head.appendChild(style);
