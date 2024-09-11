@@ -9,7 +9,7 @@ created: 2024-03-18 19:51:41
 modified: 2024-09-09 13:03:43
 date: 2024-03-18
 ---
-## 使用介绍
+# 使用介绍
 
 通过 Excalidraw 插件的脚本代码块 (\`\`\`excalidraw-script-install) 来安装，里面放的是脚本 GitHub 的 RAW 链接，在 Obsidian 中会显示为按钮，脚本更新会自动检测，欢迎大家分享和反馈，脚本的详细介绍我都上传到 [PKMer](https://pkmer.cn/) 了。
 
