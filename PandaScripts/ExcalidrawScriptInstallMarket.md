@@ -256,10 +256,6 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
     .doc-container.excalidraw-script-market {
       --h1-color: #ff8a78;
       --h2-color: #fabe58;
-      --h3-color: #ffec8b;
-      --h4-color: #87d37c;
-      --h5-color: #89c4f4;
-      --h6-color: #c69eff;
     }
     `;
     document.head.appendChild(style);
