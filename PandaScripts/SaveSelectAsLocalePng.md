@@ -38,7 +38,7 @@ for (let el of selectedEls) {
 ea.selectElementsInView([...selectedEls, ...frameEls]);
 
 // 获取笔记的基本路径
-let timestamp = window.moment().format("YYYYMMDDHHmmss");
+let timestamp = window.moment().format("YYMMDDHHmmss");
 
 let base64 = "";
 let saveFormat = settings["saveFormat"].value;
@@ -128,9 +128,11 @@ const fileName = await utils.inputPrompt(
 );
 if (!isSend) return;
 
-settings["saveFormat"].value = (!isCopy) ? saveFormat : "png";
+settings["saveFormat"].value = saveFormat;
+saveFormat=(!isCopy) ? saveFormat: "png"; 
 settings["scale"].value = scale;
 ea.setScriptSettings(settings);
+
 if (saveFormat === "png") {
   ea.targetView.svg(ea.targetView.getScene(true), undefined, true).then(svg => {
     let base64 = `data:image/svg+xml;base64,${btoa(

@@ -144,6 +144,17 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 
 ## 图片处理
 
+### ResetImageAspectRatio
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/ResetImageAspectRatio.md
+```
+
+- Author：熊猫别熬夜
+- PKMerDoc：
+- Description：一键还原图片的横纵比。
+	- ![Excalidraw.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409112058268.png)
+
 ### OpenSelectImage
 
 ```excalidraw-script-install

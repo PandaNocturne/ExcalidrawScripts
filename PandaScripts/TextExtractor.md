@@ -100,7 +100,7 @@ if (selectedFrameElements.length >= 1) {
 		}
 	});
 	await ea.addElementsToView();
-	return;
+	// return;
 }
 
 // ! 图片 OCR 或文本编辑
