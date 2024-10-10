@@ -168,8 +168,6 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 		el.x = pointerPosition?.x - (el.width / 2);
 		el.y = pointerPosition?.y - (el.height / 2);
 		await ea.addElementsToView(false, true, false);
-
-
 	} else {
 		console.log("ZoteroImage");
 		let zotero_image = match_zotero_image(insert_txt);
@@ -185,13 +183,7 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 		el.link = `[${zotero_author}](${zotero_link})`;
 		await new Promise((resolve) => setTimeout(resolve, 200));
 		await ea.addElementsToView(true, true, false);
-
 	}
-	ea.setView("active");
-	if (ea.targetView.draginfoDiv) {
-		document.body.removeChild(ea.targetView.draginfoDiv);
-		delete ea.targetView.draginfoDiv;
-	};
 }
 
 

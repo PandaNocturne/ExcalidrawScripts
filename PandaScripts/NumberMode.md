@@ -50,16 +50,9 @@ if (win.NumberMode?.eventHandler) {
 // ----------------------
 // Custom dialog controls
 // ----------------------
-if (typeof win.NumberMode.penOnly === "undefined") {
-    win.NumberMode.penOnly = undefined;
-}
-if (typeof win.NumberMode.penDetected === "undefined") {
-    win.NumberMode.penDetected = false;
-}
-
-if (typeof win.NumberMode.bulletedNumber === "undefined") {
-    win.NumberMode.bulletedNumber = false;
-}
+win.NumberMode.penOnly ??= false;
+win.NumberMode.penDetected ??= false;
+win.NumberMode.bulletedNumber ??= 1;
 
 
 let timer = Date.now();
@@ -104,6 +97,7 @@ eventHandler = async (evt) => {
 
     //if a single element with text is selected, edit the text
     //(this can be an arrow, a sticky note, or just a text element)
+    // ... existing code ...
     if (selectedTextElements.length === 1) {
         editExistingTextElement(selectedTextElements);
         return;
@@ -125,7 +119,8 @@ eventHandler = async (evt) => {
 
     // 开始编号
     windowOpen = true;
-    bulletedNumberIndex = win.NumberMode.bulletedNumber ? win.NumberMode.bulletedNumber : 1;
+    bulletedNumberIndex = win.NumberMode.bulletedNumber ?? 1;
+    console.log("当前编号: ", bulletedNumberIndex); // 添加调试信息
     if (st) {
         for (s in st) {
             if (s.startsWith("currentItem")) {
@@ -161,8 +156,10 @@ eventHandler = async (evt) => {
     box.width = maxSize + 2 * padding;
     box.height = maxSize + 2 * padding;
     win.NumberMode.bulletedNumber += 1;
+    console.log("更新后的编号: ", win.NumberMode.bulletedNumber); // 添加调试信息
     ea.addElementsToView(true, true, true);
     windowOpen = false;
+    // ... existing code ...
 };
 
 // ---------------------

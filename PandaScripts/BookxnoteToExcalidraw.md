@@ -68,7 +68,7 @@ eaApi.onPasteHook = async function ({ ea,
         ea.style.fillStyle = 'solid';
         ea.style.roughness = 0;
         // ea.style.roundness = { type: 3 }; // 圆角
-        ea.style.strokeWidth = 2;
+        ea.style.strokeWidth = 1;
         ea.style.fontFamily = 4;
         ea.style.fontSize = 20;
 
@@ -119,7 +119,6 @@ eaApi.onPasteHook = async function ({ ea,
             await ea.addElementsToView(true, false, false);
         } else if (markupData?.originaltext) {
             console.log("文字标注");
-
             const fillcolor = `#${markupData.fillcolor.slice(2)}`;
 
             if (InsertStyle == "背景") {
@@ -134,16 +133,19 @@ eaApi.onPasteHook = async function ({ ea,
             }
 
             const markupText = processText(markupData.originaltext);
-            const content = markupData.content ?  `\n${markupData.content}`: "";
+            const content = markupData.content ? `\n${markupData.content}` : "";
 
             console.log(markupText);
             const totalText = `${markupText}`;
-            let width = totalText.length > 30 ? 600 : totalText.length * 20;
-            let id = await ea.addText(0, 0, `${markupText} ([P${page}](${backlink}))${content}`, { width: width, box: true, wrapAt: 99, textAlign: "left", textVerticalAlign: "middle", box: "box" });
+            let width = totalText.length > 30 ? 400 : totalText.length * 20;
+            let id = await ea.addText(0, 0, `${markupText}${content}`, { width: width, box: true, wrapAt: 99, textAlign: "left", textVerticalAlign: "middle", box: "box" });
             let el = ea.getElement(id);
-            // el.link = backlink;
-            ea.setView("active");
-            await ea.addElementsToView(true, false, false);
+            el.link = `[${notebooks.entry}(P${page})](${backlink})`;
+            el.height = el.height - 100;
+            // 计算中心位置
+            el.x = pointerPosition?.x - (el.width / 2);
+            el.y = pointerPosition?.y - (el.height / 2);
+            await ea.addElementsToView(false, true, false);
         } else {
             new Notice("未匹配到标注信息，请重新标注或者手动插入");
         }
