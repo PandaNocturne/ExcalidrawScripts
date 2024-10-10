@@ -45,21 +45,26 @@ if (settings["Zotero Annotations Color"].value) {
 	const fillStyles = ["文字", "背景"];
 	InsertStyle = await utils.suggester(fillStyles, fillStyles, "选择插入卡片颜色的形式，ESC则为白底黑字)");
 }
+const eaApi = ExcalidrawAutomate;
 
 
-el.ondrop = async function (event) {
+
+eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
 	console.log("ondrop");
 	event.preventDefault();
 	var insert_txt = event.dataTransfer.getData("Text");
 	const ondropType = event.dataTransfer.files.length;
 	console.log(ondropType);
 
+
 	if (insert_txt.includes("zotero://")) {
 		// 格式化文本(去空格、全角转半角)  
 		insert_txt = processText(insert_txt);
 		// 清空原本投入的文本
 		event.stopPropagation();
-		processZoteroData(ea, insert_txt);
+		console.log("✔Zotero ondrop");
+		console.log(pointerPosition);
+		await processZoteroData(ea, insert_txt, pointerPosition);
 
 	} else if (ondropType < 1) {
 		// 清空原本投入的文本
@@ -79,8 +84,6 @@ el.ondrop = async function (event) {
 	};
 };
 
-const eaApi = ExcalidrawAutomate;
-
 eaApi.onPasteHook = async function ({ ea, payload, event, excalidrawFile, view, pointerPosition }) {
 	console.log("onPaste");
 	event.preventDefault();
@@ -93,11 +96,13 @@ eaApi.onPasteHook = async function ({ ea, payload, event, excalidrawFile, view, 
 		payload.text = "";
 		insert_txt = processText(inputText);
 		event.stopPropagation();
-		processZoteroData(ea, insert_txt);
+		console.log("✔Zotero onPasteHook");
+		console.log(pointerPosition);
+		await processZoteroData(ea, insert_txt, pointerPosition);
 	}
 };
 
-async function processZoteroData(ea, insert_txt) {
+async function processZoteroData(ea, insert_txt, pointerPosition) {
 	ea.clear();
 	ea.style.strokeStyle = "solid";
 	ea.style.fillStyle = 'solid';
@@ -105,10 +110,10 @@ async function processZoteroData(ea, insert_txt) {
 	ea.style.backgroundColor = "transparent";
 	ea.style.strokeColor = "#1e1e1e";
 	// ea.style.roundness = { type: 3 }; // 圆角
-	ea.style.strokeWidth = 2;
+	ea.style.strokeWidth = 1;
 	ea.style.fontFamily = 4;
 	ea.style.fontSize = 20;
-	console.log("Zotero");
+
 	let zotero_color = match_zotero_color(insert_txt);
 	if (zotero_color) {
 		if (InsertStyle == "背景") {
@@ -131,9 +136,9 @@ async function processZoteroData(ea, insert_txt) {
 	zotero_link = match_zotero_link(insert_txt);
 
 	if (zotero_author) {
-		zotero_author = `[(${zotero_author})](${zotero_link})`;
+		zotero_author = `(${zotero_author})`;
 	} else {
-		zotero_author = `[📍](${zotero_link})`;
+		zotero_author = `(Zotero)`;
 	}
 
 	zotero_comment = match_zotero_comment(insert_txt);
@@ -143,40 +148,50 @@ async function processZoteroData(ea, insert_txt) {
 
 	if (zotero_txt) {
 		console.log("ZoteroText");
-		const totalText = `${zotero_txt}${zotero_comment}`;
-		let width = totalText.length > 30 ? 600 : totalText.length * 20;
-		let id = await ea.addText(0, 0, `${zotero_txt}${zotero_author}${zotero_comment}`, { width: width, box: true, wrapAt: 99, textAlign: "left", textVerticalAlign: "middle", box: "box" });
+		let id = await ea.addText(
+			null,
+			null,
+			`${zotero_txt}${zotero_author}${zotero_comment}`,
+			{
+				width: 400,
+				box: true,
+				wrapAt: 99,
+				textAlign: "left",
+				textVerticalAlign: "middle",
+				box: "box"
+			}
+		);
 		let el = ea.getElement(id);
-		ea.setView("active");
-		await ea.addElementsToView(true, true, false);
-		if (ea.targetView.draginfoDiv) {
-			document.body.removeChild(ea.targetView.draginfoDiv);
-			delete ea.targetView.draginfoDiv;
-		};
+		el.link = `[${zotero_author}](${zotero_link})`;
+		el.height = el.height - 100;
+		// 计算中心位置
+		el.x = pointerPosition?.x - (el.width / 2);
+		el.y = pointerPosition?.y - (el.height / 2);
+		await ea.addElementsToView(false, true, false);
+
+
 	} else {
 		console.log("ZoteroImage");
 		let zotero_image = match_zotero_image(insert_txt);
 		let zotero_image_name = `${zotero_image}.png`;
 		let Obsidian_image_Path = `${basePath}/${relativePath}/${zotero_image_name}`;
-
 		if (!fs.existsSync(`${basePath}/${relativePath}`)) {
 			fs.mkdirSync(path.dirname(`${basePath}/${relativePath}`), { recursive: true });
 		}
 		let zotero_image_path = `${zotero_library_path}/${zotero_image_name}`;
-
 		fs.copyFileSync(zotero_image_path, Obsidian_image_Path);
-		await new Promise((resolve) => setTimeout(resolve, 200));
-
-		let id = await ea.addImage(0, 0, zotero_image_name);
+		let id = await ea.addImage(null, null, zotero_image_name);
 		let el = ea.getElement(id);
-		el.link = zotero_author;
-		ea.setView("active");
+		el.link = `[${zotero_author}](${zotero_link})`;
+		await new Promise((resolve) => setTimeout(resolve, 200));
 		await ea.addElementsToView(true, true, false);
-		if (ea.targetView.draginfoDiv) {
-			document.body.removeChild(ea.targetView.draginfoDiv);
-			delete ea.targetView.draginfoDiv;
-		};
+
 	}
+	ea.setView("active");
+	if (ea.targetView.draginfoDiv) {
+		document.body.removeChild(ea.targetView.draginfoDiv);
+		delete ea.targetView.draginfoDiv;
+	};
 }
 
 

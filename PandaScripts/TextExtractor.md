@@ -26,37 +26,6 @@ if (!settings["ocrModel2"]) {
 
 // 获取库的基本路径
 const basePath = (app.vault.adapter).getBasePath();
-// ! text 类型
-const selectedTextElements = ea.getViewSelectedElements().filter(el => el.type === "text");
-
-if (selectedTextElements.length === 1) {
-	ea.copyViewElementsToEAforEditing(selectedTextElements);
-	const el = ea.getElements()[0];
-	let exText = el.rawText;
-	const { insertType, ocrTextEdit } = await openEditPrompt(exText);
-
-	if (insertType == "copyText") {
-		copyToClipboard(ocrTextEdit);
-		new Notice(`已复制文本`, 1000);
-	} else if (insertType) {
-		copyToClipboard(ocrTextEdit);
-		new Notice(`完成修改`, 500);
-	}
-
-	el.originalText = el.rawText = el.text = ocrTextEdit;
-	// 文本全部居左，居中
-	el.textAlign = "left";
-	el.textVerticalAlign = "middle";
-	ea.refreshTextElementSize(el.id);
-	await ea.addElementsToView(false, false);
-	if (el.containerId) {
-		const containers = ea.getViewElements().filter(e => e.id === el.containerId);
-		api.updateContainerSize(containers);
-		ea.selectElementsInView(containers);
-	}
-	return;
-}
-
 // ! frame 类型
 const selectedFrameElements = ea.getViewSelectedElements().filter(el => el.type === "frame");
 if (selectedFrameElements.length === 1) {
@@ -90,6 +59,7 @@ if (selectedFrameElements.length === 1) {
 	new Notice(`已复制${frameLinks}链接`, 2000);
 }
 
+
 if (selectedFrameElements.length >= 1) {
 	// ! 给aliaes添加所有Frame的名称
 	const allFrameElements = ea.getViewElements().filter(el => el.type === "frame");
@@ -100,7 +70,38 @@ if (selectedFrameElements.length >= 1) {
 		}
 	});
 	await ea.addElementsToView();
-	// return;
+	return;
+}
+
+// ! text 类型
+const selectedTextElements = ea.getViewSelectedElements().filter(el => el.type === "text");
+
+if (selectedTextElements.length === 1) {
+	ea.copyViewElementsToEAforEditing(selectedTextElements);
+	const el = ea.getElements()[0];
+	let exText = el.rawText;
+	const { insertType, ocrTextEdit } = await openEditPrompt(exText);
+
+	if (insertType == "copyText") {
+		copyToClipboard(ocrTextEdit);
+		new Notice(`已复制文本`, 1000);
+	} else if (insertType) {
+		copyToClipboard(ocrTextEdit);
+		new Notice(`完成修改`, 500);
+	}
+
+	el.originalText = el.rawText = el.text = ocrTextEdit;
+	// 文本全部居左，居中
+	el.textAlign = "left";
+	el.textVerticalAlign = "middle";
+	ea.refreshTextElementSize(el.id);
+	await ea.addElementsToView(false, false);
+	if (el.containerId) {
+		const containers = ea.getViewElements().filter(e => e.id === el.containerId);
+		api.updateContainerSize(containers);
+		ea.selectElementsInView(containers);
+	}
+	return;
 }
 
 // ! 图片 OCR 或文本编辑

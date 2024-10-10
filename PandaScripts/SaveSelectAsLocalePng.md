@@ -117,7 +117,7 @@ const fileName = await utils.inputPrompt(
       action: () => { isCopyAsWiki = isSend = true; return; }
     },
     {
-      caption: "Confirm",
+      caption: "Save as Local File",
       action: () => { isSend = true; return; }
     },
 
@@ -134,7 +134,7 @@ settings["scale"].value = scale;
 ea.setScriptSettings(settings);
 
 if (saveFormat === "png") {
-  ea.targetView.svg(ea.targetView.getScene(true), undefined, true).then(svg => {
+  ea.targetView.svg(ea.targetView.getScene(false), undefined, true).then(svg => {
     let base64 = `data:image/svg+xml;base64,${btoa(
       unescape(encodeURIComponent(svg.outerHTML.replaceAll("&nbsp;", " "))),
     )}`;

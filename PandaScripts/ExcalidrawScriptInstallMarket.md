@@ -39,7 +39,6 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
     });
 
 
-
     // Editor 按钮点击事件
     editorButtonEl.addEventListener('click', async () => {
       const defaultUrls = this.defaultUrls.map(item => `${item.name}|${item.url}`).join('\n');
@@ -92,7 +91,7 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
     // 使用 Obsidian 的 Markdown 渲染功能
     ea.obsidian.MarkdownRenderer.renderMarkdown(docContent, docContainer, '', this);
     // 添加折叠功能
-    this.addCollapseFunctionality(docContainer);
+    // this.addCollapseFunctionality(docContainer);
   }
   addCollapseFunctionality(container) {
     const headers = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
@@ -253,10 +252,6 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
       }
     }
 
-    .doc-container.excalidraw-script-market {
-      h1{color: #ff8a78;}
-      h2{color: #fabe58;}
-    }
     `;
     document.head.appendChild(style);
   }

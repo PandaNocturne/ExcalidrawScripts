@@ -101,7 +101,8 @@ if (selectedEls.length === 1) {
     let date = window.moment().format("YYYYMMDDHHmmss");
 
     let base64 = "";
-    await ea.targetView.svg(ea.targetView.getScene(true), undefined, true).then(svg => {
+    // 
+    await ea.targetView.svg(ea.targetView.getScene(true),undefined, false,false).then(svg => {
         base64 = `data:image/svg+xml;base64,${btoa(
             unescape(encodeURIComponent(svg.outerHTML)),
         )}`;
@@ -261,7 +262,7 @@ if (selectedEls.length === 1) {
     return;
 }
 
-if (!settings["Don't stop Eagle→Excalidraw"].value) {
+if (!(settings["Don't stop Eagle→Excalidraw"].value)) {
     const options = ["✅启动EagleToExcalidraw模式", "❌取消EagleToExcalidraw模式"];
     const option = await utils.suggester(options, options);
     if (!option) return;

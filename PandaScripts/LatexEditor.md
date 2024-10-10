@@ -50,8 +50,6 @@ class LatexEditorModal extends ea.obsidian.Modal {
   renderLatex(preview, latex) {
     // 清空预览内容
     preview.empty();
-    // 自动换行替换
-    // latex = `${latex.replace(/\n/, '\\\\')}`;
     // 使用 Obsidian 的 Markdown 渲染功能，并用 $$包裹 LaTeX 公式，
     const wrappedLatex = `\$\$${latex}\$\$`;
     ea.obsidian.MarkdownRenderer.renderMarkdown(wrappedLatex, preview, '');
@@ -98,10 +96,6 @@ class LatexEditorModal extends ea.obsidian.Modal {
             flex: 1;
             padding: 0 5px 0 5px;
             overflow: auto;
-
-            mjx-container {
-              text-align: left !important;
-            }
           }
 
           textarea {
