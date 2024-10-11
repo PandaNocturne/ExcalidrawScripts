@@ -47,15 +47,12 @@ if (settings["Zotero Annotations Color"].value) {
 }
 const eaApi = ExcalidrawAutomate;
 
-
-
 eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
 	console.log("ondrop");
 	event.preventDefault();
 	var insert_txt = event.dataTransfer.getData("Text");
 	const ondropType = event.dataTransfer.files.length;
 	console.log(ondropType);
-
 
 	if (insert_txt.includes("zotero://")) {
 		// 格式化文本(去空格、全角转半角)  
@@ -65,7 +62,6 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
 		console.log("✔Zotero ondrop");
 		console.log(pointerPosition);
 		await processZoteroData(ea, insert_txt, pointerPosition);
-
 	} else if (ondropType < 1) {
 		// 清空原本投入的文本
 		event.stopPropagation();
@@ -74,13 +70,17 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
 		insert_txt = processText(insert_txt);
 		console.log("文本格式化");
 		let width = insert_txt.length > 30 ? 600 : insert_txt.length * 15;
-		await ea.addText(0, 0, `${insert_txt} `, { width: width, box: true, wrapAt: 90, textAlign: "left", textVerticalAlign: "middle", box: "box" });
-		// let el = ea.getElement(id);
-		await ea.addElementsToView(true, true, false);
-		if (ea.targetView.draginfoDiv) {
-			document.body.removeChild(ea.targetView.draginfoDiv);
-			delete ea.targetView.draginfoDiv;
-		};
+		const id = await ea.addText(0, 0, `${insert_txt} `, { width: width, box: true, wrapAt: 90, textAlign: "left", textVerticalAlign: "middle", box: "box" });
+		let el = ea.getElement(id);
+		// 计算中心位置
+		el.x = pointerPosition?.x - (el.width / 2);
+		el.y = pointerPosition?.y - (el.height / 2);
+		el.height = el.height - 100;
+		await ea.addElementsToView(false, true, false);
+	};
+	if (ea.targetView.draginfoDiv) {
+		document.body.removeChild(ea.targetView.draginfoDiv);
+		delete ea.targetView.draginfoDiv;
 	};
 };
 
@@ -103,6 +103,7 @@ eaApi.onPasteHook = async function ({ ea, payload, event, excalidrawFile, view, 
 };
 
 async function processZoteroData(ea, insert_txt, pointerPosition) {
+	ea.setView("active");
 	ea.clear();
 	ea.style.strokeStyle = "solid";
 	ea.style.fillStyle = 'solid';
@@ -110,7 +111,7 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 	ea.style.backgroundColor = "transparent";
 	ea.style.strokeColor = "#1e1e1e";
 	// ea.style.roundness = { type: 3 }; // 圆角
-	ea.style.strokeWidth = 1;
+	ea.style.strokeWidth = 0.5;
 	ea.style.fontFamily = 4;
 	ea.style.fontSize = 20;
 
@@ -151,7 +152,7 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 		let id = await ea.addText(
 			null,
 			null,
-			`${zotero_txt}${zotero_author}${zotero_comment}`,
+			`${zotero_txt}${zotero_comment}`,
 			{
 				width: 400,
 				box: true,
@@ -163,10 +164,10 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 		);
 		let el = ea.getElement(id);
 		el.link = `[${zotero_author}](${zotero_link})`;
-		el.height = el.height - 100;
 		// 计算中心位置
 		el.x = pointerPosition?.x - (el.width / 2);
 		el.y = pointerPosition?.y - (el.height / 2);
+		el.height = el.height - 100;
 		await ea.addElementsToView(false, true, false);
 	} else {
 		console.log("ZoteroImage");
@@ -186,7 +187,6 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 	}
 }
 
-
 function processText(text) {
 	// 替换特殊空格为普通空格
 	text = text.replace(/[\ue5d2\u00a0\u2007\u202F\u3000\u314F\u316D\ue5cf]/g, ' ');
@@ -196,14 +196,14 @@ function processText(text) {
 	text = text.replace(/([a-zA-Z])([\u4e00-\u9fa5])/g, '$1 $2');
 
 	// 删除中文之间的空格
-	text = text.replace(/([0-9\.\u4e00-\u9fa5])\s+([0-9\.\u4e00-\u9fa5])/g, '$1$2');
-	text = text.replace(/([0-9\.\u4e00-\u9fa5])\s+([0-9\.\u4e00-\u9fa5])/g, '$1$2');
-	text = text.replace(/([\u4e00-\u9fa5])\s+/g, '$1');
-	text = text.replace(/\s+([\u4e00-\u9fa5])/g, '$1');
+	text = text.replace(/([\u4e00-\u9fa5]) +([\u4e00-\u9fa5])/g, '$1$2');
+	text = text.replace(/([\u4e00-\u9fa5]) +([\u4e00-\u9fa5])/g, '$1$2');
+	text = text.replace(/([\u4e00-\u9fa5]) +/g, '$1');
+	text = text.replace(/ +([\u4e00-\u9fa5])/g, '$1');
 
-	// // 在中英文之间添加空格
-	// text = text.replace(/([\u4e00-\u9fa5])([a-zA-Z])/g, '$1 $2');
-	// text = text.replace(/([a-zA-Z])([\u4e00-\u9fa5])/g, '$1 $2');
+	// // // 在中英文之间添加空格
+	// // text = text.replace(/([\u4e00-\u9fa5])([a-zA-Z])/g, '$1 $2');
+	// // text = text.replace(/([a-zA-Z])([\u4e00-\u9fa5])/g, '$1 $2');
 
 	return text;
 }

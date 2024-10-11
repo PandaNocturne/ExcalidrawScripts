@@ -102,7 +102,7 @@ if (selectedEls.length === 1) {
 
     let base64 = "";
     // 
-    await ea.targetView.svg(ea.targetView.getScene(true),undefined, false,false).then(svg => {
+    await ea.targetView.svg(ea.targetView.getScene(true), undefined, false, false).then(svg => {
         base64 = `data:image/svg+xml;base64,${btoa(
             unescape(encodeURIComponent(svg.outerHTML)),
         )}`;
@@ -272,9 +272,9 @@ if (!(settings["Don't stop Eagle→Excalidraw"].value)) {
         return;
     }
 }
-
+const eaApi = ExcalidrawAutomate;
 // 对于从Eagle拖拽过来的文件，以Eagle文件夹名命名，根据后缀名来创建不同的拖拽形式
-el.ondrop = async function (event) {
+eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
     console.log("ondrop");
     event.preventDefault();
     if (event.dataTransfer.types.includes("Files")) {
@@ -515,7 +515,10 @@ el.ondrop = async function (event) {
                     let el = ea.getElement(id);
                     // 将el.link的值设置为Eagle的回链
                     el.link = `eagle://item/${eagleId}`;
-                    await ea.addElementsToView(true, false, false);
+                    // 计算中心位置
+                    el.x = pointerPosition?.x - (el.width / 2);
+                    el.y = pointerPosition?.y - (el.height / 2);
+                    await ea.addElementsToView(false, true, false);
                     if (ea.targetView.draginfoDiv) {
                         document.body.removeChild(ea.targetView.draginfoDiv);
                         delete ea.targetView.draginfoDiv;
