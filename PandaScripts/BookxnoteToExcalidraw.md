@@ -55,6 +55,7 @@ eaApi.onPasteHook = async function ({ ea,
     view,
     pointerPosition
 }) {
+    ea.setView("active");
     console.log("onPaste");
     event.preventDefault();
     const backlink = payload.text;
