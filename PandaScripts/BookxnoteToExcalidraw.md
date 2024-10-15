@@ -69,7 +69,7 @@ eaApi.onPasteHook = async function ({ ea,
         ea.style.fillStyle = 'solid';
         ea.style.roughness = 0;
         // ea.style.roundness = { type: 3 }; // 圆角
-        ea.style.strokeWidth = 1;
+        ea.style.strokeWidth = 0.5;
         ea.style.fontFamily = 4;
         ea.style.fontSize = 20;
 
@@ -86,15 +86,13 @@ eaApi.onPasteHook = async function ({ ea,
         console.log(booknoteMarkupsPath);
         const markupsJson = JSON.parse(fs.readFileSync(booknoteMarkupsPath, 'utf8'));
         // console.log(markupsJson)
-
         // 获取连接的标注信息
         const markupData = findMarkupsByUuid(markupsJson, uuid);
         // console.log(markupData?.originaltext);
-
         if (markupData?.imgfile) {
             console.log("图片标注");
             const imgfilePath = `${notebookFolder}/${notebooks.entry}/imgfiles/${markupData.imgfile}`;
-            let imgName;
+            let imgName = "";
             // 复制图片到Obsidian的笔记库
             if (settings["copyBookxnoteImageToObsidian"].value) {
                 imgName = `${markupData.imgfile}`;
@@ -103,7 +101,6 @@ eaApi.onPasteHook = async function ({ ea,
                     // 创建文件夹
                     fs.mkdirSync(notebooksImagesPath);
                     new Notice(`图片文件不存在，已创建文件夹：<br>${notebooksImagesPath}`, 3000);
-
                 } else {
                     console.log('文件夹已存在');
                 }
@@ -112,12 +109,14 @@ eaApi.onPasteHook = async function ({ ea,
             } else {
                 imgName = `${markupData.imgfile}`;
             }
-
-            let id = await ea.addImage(0, 0, imgName);
-            let el = ea.getElement(id);
-            el.link = `[${notebooks.entry}(P${page})](${backlink})`;
-            ea.setView("active");
-            await ea.addElementsToView(true, false, false);
+            const id = await ea.addImage(0, 0, imgName);
+            const el = ea.getElement(id);
+            el.link = `[《${notebooks.entry}》P${page}](${backlink})`;
+            console.log(el.link);
+            // 计算中心位置
+            el.x = pointerPosition?.x - (el.width / 2);
+            el.y = pointerPosition?.y - (el.height / 2);
+            await ea.addElementsToView(false, true, false);
         } else if (markupData?.originaltext) {
             console.log("文字标注");
             const fillcolor = `#${markupData.fillcolor.slice(2)}`;
