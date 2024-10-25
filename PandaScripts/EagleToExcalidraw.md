@@ -272,9 +272,9 @@ if (!(settings["Don't stop Eagle→Excalidraw"].value)) {
         return;
     }
 }
-const eaApi = ExcalidrawAutomate;
+
 // 对于从Eagle拖拽过来的文件，以Eagle文件夹名命名，根据后缀名来创建不同的拖拽形式
-eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
+el.ondrop = async function (event) {
     console.log("ondrop");
     event.preventDefault();
     if (event.dataTransfer.types.includes("Files")) {
@@ -363,7 +363,6 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
                     .then(result => console.log(result))
                     .catch(error => console.log('error', error));
 
-
                 // 设置不同文件类型的导入方式ea.addText为文本、ea.addImage为图片
                 if (
                     //   对网页统一用内部链接的形式
@@ -372,14 +371,6 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
                     fileName.toLowerCase().endsWith(".htm")
                 ) {
                     let id = await ea.addText(0, 0, `[[${destinationName}|${insert_txt}]]`, { width: 300, box: true, wrapAt: 100, textAlign: "center", textVerticalAlign: "middle", box: "box" });
-
-                    await ea.addElementsToView(true, false, false);
-
-                    if (ea.targetView.draginfoDiv) {
-                        document.body.removeChild(ea.targetView.draginfoDiv);
-                        delete ea.targetView.draginfoDiv;
-                    }
-
                 } else if (
                     //   对图片统一用导入图片后附加链接的形式
                     fileName.toLowerCase().endsWith(".png") ||
@@ -402,13 +393,6 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
                         el.link = `eagle://item/${eagleId}`;
                     }
 
-                    await ea.addElementsToView(true, false, false);
-
-                    if (ea.targetView.draginfoDiv) {
-                        document.body.removeChild(ea.targetView.draginfoDiv);
-                        delete ea.targetView.draginfoDiv;
-                    }
-
                 } else if (fileName.toLowerCase().endsWith(".url")) {
                     // 对url文件采用文本加入json的连接形式
                     link = metadata.url;
@@ -417,11 +401,6 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
                     let el = ea.getElement(id);
                     // 将el.link的值设置为Eagle的回链
                     el.link = `eagle://item/${eagleId}`;
-                    await ea.addElementsToView(true, false, false);
-                    if (ea.targetView.draginfoDiv) {
-                        document.body.removeChild(ea.targetView.draginfoDiv);
-                        delete ea.targetView.draginfoDiv;
-                    }
                 } else if (
                     //   针对Office三件套
                     fileName.toLowerCase().endsWith(".pptx") ||
@@ -447,12 +426,6 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
                     let el = ea.getElement(id);
                     el.link = `[[${destinationName}|${insert_txt}]]`;
 
-                    await ea.addElementsToView(true, false, false);
-                    if (ea.targetView.draginfoDiv) {
-                        document.body.removeChild(ea.targetView.draginfoDiv);
-                        delete ea.targetView.draginfoDiv;
-                    }
-
                 } else if (
                     //   对gif、mp4等动态进行设置(可根据需要的格式自行添加)
                     fileName.toLowerCase().endsWith(".gif") ||
@@ -475,12 +448,6 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
 
                     // ea.style.fillStyle = "solid";
                     el.link = `[[${destinationName}]]`;
-
-                    await ea.addElementsToView(true, false, false);
-                    if (ea.targetView.draginfoDiv) {
-                        document.body.removeChild(ea.targetView.draginfoDiv);
-                        delete ea.targetView.draginfoDiv;
-                    }
                 } else if (
                     //   对mp3等音频进行设置(可根据需要的格式自行添加)
                     fileName.toLowerCase().endsWith(".mp3") ||
@@ -503,29 +470,21 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
 
                     // ea.style.fillStyle = "solid";
                     el.link = `[[${destinationName}]]`;
-
-                    await ea.addElementsToView(true, false, false);
-                    if (ea.targetView.draginfoDiv) {
-                        document.body.removeChild(ea.targetView.draginfoDiv);
-                        delete ea.targetView.draginfoDiv;
-                    }
                 } else {
                     // 其余统一插入eagle连接
                     let id = await ea.addText(0, 0, `[[${destinationName}|${insert_txt}]]`, { width: 400, box: true, wrapAt: 100, textAlign: "center", textVerticalAlign: "middle", box: "box" });
                     let el = ea.getElement(id);
                     // 将el.link的值设置为Eagle的回链
                     el.link = `eagle://item/${eagleId}`;
-                    // 计算中心位置
-                    el.x = pointerPosition?.x - (el.width / 2);
-                    el.y = pointerPosition?.y - (el.height / 2);
-                    await ea.addElementsToView(false, true, false);
-                    if (ea.targetView.draginfoDiv) {
-                        document.body.removeChild(ea.targetView.draginfoDiv);
-                        delete ea.targetView.draginfoDiv;
-                    }
                 }
             }
         }
+    }
+    
+    await ea.addElementsToView(true, false, false);
+    if (ea.targetView.draginfoDiv) {
+        document.body.removeChild(ea.targetView.draginfoDiv);
+        delete ea.targetView.draginfoDiv;
     }
 };
 new Notice("✅EagleToExcalidraw脚本已启动！");
