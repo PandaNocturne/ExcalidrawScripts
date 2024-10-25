@@ -92,8 +92,8 @@ if (selectedTextElements.length === 1) {
 
 	el.originalText = el.rawText = el.text = ocrTextEdit;
 	// 文本全部居左，居中
-	el.textAlign = "left";
-	el.textVerticalAlign = "middle";
+	// el.textAlign = "left";
+	// el.textVerticalAlign = "middle";
 	ea.refreshTextElementSize(el.id);
 	await ea.addElementsToView(false, false);
 	if (el.containerId) {

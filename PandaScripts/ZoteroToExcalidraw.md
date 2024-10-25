@@ -78,10 +78,10 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
 		el.height = el.height - 100;
 		await ea.addElementsToView(false, true, false);
 	};
-	if (ea.targetView.draginfoDiv) {
-		document.body.removeChild(ea.targetView.draginfoDiv);
-		delete ea.targetView.draginfoDiv;
-	};
+	// if (ea.targetView.draginfoDiv) {
+	// 	document.body.removeChild(ea.targetView.draginfoDiv);
+	// 	delete ea.targetView.draginfoDiv;
+	// };
 };
 
 eaApi.onPasteHook = async function ({ ea, payload, event, excalidrawFile, view, pointerPosition }) {

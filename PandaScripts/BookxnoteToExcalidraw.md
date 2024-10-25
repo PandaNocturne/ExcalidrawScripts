@@ -111,7 +111,8 @@ eaApi.onPasteHook = async function ({ ea,
             }
             const id = await ea.addImage(0, 0, imgName);
             const el = ea.getElement(id);
-            el.link = `[《${notebooks.entry}》P${page}](${backlink})`;
+            // el.link = `[《${notebooks.entry}》P${page}](${backlink})`;
+            el.link = `${backlink}`;
             console.log(el.link);
             // 计算中心位置
             el.x = pointerPosition?.x - (el.width / 2);
@@ -140,7 +141,8 @@ eaApi.onPasteHook = async function ({ ea,
             let width = totalText.length > 30 ? 400 : totalText.length * 20;
             let id = await ea.addText(0, 0, `${markupText}${content}`, { width: width, box: true, wrapAt: 99, textAlign: "left", textVerticalAlign: "middle", box: "box" });
             let el = ea.getElement(id);
-            el.link = `[${notebooks.entry}(P${page})](${backlink})`;
+            // el.link = `[${notebooks.entry}(P${page})](${backlink})`;
+            el.link = `${backlink}`;
             el.height = el.height - 100;
             // 计算中心位置
             el.x = pointerPosition?.x - (el.width / 2);
