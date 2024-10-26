@@ -1,8 +1,3 @@
-/*
-
-```javascript
-*/
-
 let settings = ea.getScriptSettings();
 //set default values on first run
 if (!settings["Zotero Library Path"]) settings["Zotero Library Path"] = { value: false };
@@ -36,9 +31,6 @@ const basePath = (app.vault.adapter).getBasePath();
 const zotero_library_path = settings["Zotero Library Path"].value;
 // 设置相对路径
 const relativePath = settings["Zotero Images Path"].value;
-
-// let api = ea.getExcalidrawAPI();
-let el = ea.targetView.containerEl.querySelectorAll(".excalidraw-wrapper")[0];
 
 let InsertStyle;
 if (settings["Zotero Annotations Color"].value) {
@@ -78,10 +70,6 @@ eaApi.onDropHook = async function ({ ea, payload, event, pointerPosition }) {
 		el.height = el.height - 100;
 		await ea.addElementsToView(false, true, false);
 	};
-	// if (ea.targetView.draginfoDiv) {
-	// 	document.body.removeChild(ea.targetView.draginfoDiv);
-	// 	delete ea.targetView.draginfoDiv;
-	// };
 };
 
 eaApi.onPasteHook = async function ({ ea, payload, event, excalidrawFile, view, pointerPosition }) {
@@ -182,7 +170,7 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 		let id = await ea.addImage(null, null, zotero_image_name);
 		let el = ea.getElement(id);
 		el.link = `[${zotero_author}](${zotero_link})`;
-		await new Promise((resolve) => setTimeout(resolve, 200));
+		await new Promise((resolve) => setTimeout(resolve, 300));
 		await ea.addElementsToView(true, true, false);
 	}
 }

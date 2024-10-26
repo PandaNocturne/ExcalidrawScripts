@@ -25,8 +25,6 @@ if (!settings["Don't stop Eagle→Excalidraw"]) {
 };
 const path = require('path');
 const fs = require("fs");
-// let api = ea.getExcalidrawAPI();
-let el = ea.targetView.containerEl.querySelectorAll(".excalidraw-wrapper")[0];
 
 // 获取库的基本路径
 const basePath = (app.vault.adapter).getBasePath();
@@ -35,6 +33,7 @@ const relativePath = settings["Eagle Images Path"].value;
 // 对于选中的项目，则通过文件名来创建Eagle的回链并打开
 let selectedEls = ea.getViewSelectedElements();
 
+// ! Excalidraw → Eagle
 if (selectedEls.length === 1) {
     let selectedEl = selectedEls[0];
     let embeddedFile = ea.targetView.excalidrawData.getFile(selectedEl.fileId);
@@ -273,10 +272,19 @@ if (!(settings["Don't stop Eagle→Excalidraw"].value)) {
     }
 }
 
+// ! Eagle →  Excalidraw
 // 对于从Eagle拖拽过来的文件，以Eagle文件夹名命名，根据后缀名来创建不同的拖拽形式
-el.ondrop = async function (event) {
+let elEl = ea.targetView.containerEl.querySelectorAll(".excalidraw-wrapper")[0];
+elEl.ondrop = async function (event) {
     console.log("ondrop");
     event.preventDefault();
+
+    // 手动获取pointerPosition
+    const pointerPosition = { x: event.clientX, y: event.clientY };
+    console.log(`Pointer Position: ${pointerPosition.x}, ${pointerPosition.y}`);
+
+    let el;
+
     if (event.dataTransfer.types.includes("Files")) {
         console.log("文件类型判断");
         for (let file of event.dataTransfer.files) {
@@ -371,6 +379,7 @@ el.ondrop = async function (event) {
                     fileName.toLowerCase().endsWith(".htm")
                 ) {
                     let id = await ea.addText(0, 0, `[[${destinationName}|${insert_txt}]]`, { width: 300, box: true, wrapAt: 100, textAlign: "center", textVerticalAlign: "middle", box: "box" });
+                    el = ea.getElement(id);
                 } else if (
                     //   对图片统一用导入图片后附加链接的形式
                     fileName.toLowerCase().endsWith(".png") ||
@@ -382,7 +391,7 @@ el.ondrop = async function (event) {
                     fileName.toLowerCase().endsWith(".svg")
                 ) {
                     let id = await ea.addImage(0, 0, destinationName);
-                    let el = ea.getElement(id);
+                    el = ea.getElement(id);
 
                     if (metadata.url) {
                         // 将el.link的值设置为metadata.json中的url
@@ -398,7 +407,7 @@ el.ondrop = async function (event) {
                     link = metadata.url;
                     let id = await ea.addText(0, 0, `🌐[${insert_txt.replace(".url", "")}](${link})`, { width: 400, box: true, wrapAt: 100, textAlign: "center", textVerticalAlign: "middle", box: "box" });
 
-                    let el = ea.getElement(id);
+                    el = ea.getElement(id);
                     // 将el.link的值设置为Eagle的回链
                     el.link = `eagle://item/${eagleId}`;
                 } else if (
@@ -423,7 +432,7 @@ el.ondrop = async function (event) {
                     } else {
                         id = await ea.addText(0, 0, `[[${destinationName}|${insert_txt}]]`, { width: 400, box: true, wrapAt: 100, textAlign: "center", textVerticalAlign: "middle", box: "box" });
                     }
-                    let el = ea.getElement(id);
+                    el = ea.getElement(id);
                     el.link = `[[${destinationName}|${insert_txt}]]`;
 
                 } else if (
@@ -444,7 +453,7 @@ el.ondrop = async function (event) {
 
                     let eagleGifFile = app.vault.getAbstractFileByPath(`${relativePath}/${destinationName}`);
                     let id = await await ea.addIFrame(0, 0, 500, 280, 0, eagleGifFile);
-                    let el = ea.getElement(id);
+                    el = ea.getElement(id);
 
                     // ea.style.fillStyle = "solid";
                     el.link = `[[${destinationName}]]`;
@@ -466,21 +475,25 @@ el.ondrop = async function (event) {
 
                     let eagleGifFile = app.vault.getAbstractFileByPath(`${relativePath}/${destinationName}`);
                     let id = await await ea.addIFrame(0, 0, 400, 80, 0, eagleGifFile);
-                    let el = ea.getElement(id);
+                    el = ea.getElement(id);
 
                     // ea.style.fillStyle = "solid";
                     el.link = `[[${destinationName}]]`;
                 } else {
                     // 其余统一插入eagle连接
                     let id = await ea.addText(0, 0, `[[${destinationName}|${insert_txt}]]`, { width: 400, box: true, wrapAt: 100, textAlign: "center", textVerticalAlign: "middle", box: "box" });
-                    let el = ea.getElement(id);
+                    el = ea.getElement(id);
                     // 将el.link的值设置为Eagle的回链
                     el.link = `eagle://item/${eagleId}`;
                 }
             }
         }
     }
-    
+
+    // 计算中心位置
+    el.x = pointerPosition?.x - (el.width / 2);
+    el.y = pointerPosition?.y - (el.height / 2);
+    await ea.addElementsToView(false, true, false);
     await ea.addElementsToView(true, false, false);
     if (ea.targetView.draginfoDiv) {
         document.body.removeChild(ea.targetView.draginfoDiv);
