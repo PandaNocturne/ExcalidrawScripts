@@ -279,12 +279,7 @@ elEl.ondrop = async function (event) {
     console.log("ondrop");
     event.preventDefault();
 
-    // 手动获取pointerPosition
-    const pointerPosition = { x: event.clientX, y: event.clientY };
-    console.log(`Pointer Position: ${pointerPosition.x}, ${pointerPosition.y}`);
-
     let el;
-
     if (event.dataTransfer.types.includes("Files")) {
         console.log("文件类型判断");
         for (let file of event.dataTransfer.files) {
@@ -490,11 +485,7 @@ elEl.ondrop = async function (event) {
         }
     }
 
-    // 计算中心位置
-    el.x = pointerPosition?.x - (el.width / 2);
-    el.y = pointerPosition?.y - (el.height / 2);
-    await ea.addElementsToView(false, true, false);
-    await ea.addElementsToView(true, false, false);
+    await ea.addElementsToView(true, true, false);
     if (ea.targetView.draginfoDiv) {
         document.body.removeChild(ea.targetView.draginfoDiv);
         delete ea.targetView.draginfoDiv;
