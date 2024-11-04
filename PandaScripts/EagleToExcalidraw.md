@@ -421,7 +421,7 @@ elEl.ondrop = async function (event) {
                     if (InsertPDFImage) {
                         let destinationPath = `${basePath}/${relativePath}/${eagleId}.png`;
                         fs.copyFileSync(ThumbnailImage, destinationPath);
-                        await new Promise((resolve) => setTimeout(resolve, 200)); // 暂停一会儿
+                        await new Promise((resolve) => setTimeout(resolve, 300)); // 暂停一会儿
                         id = await ea.addImage(0, 0, `${eagleId}.png`);
 
                     } else {

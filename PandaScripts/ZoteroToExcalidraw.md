@@ -167,10 +167,10 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 		}
 		let zotero_image_path = `${zotero_library_path}/${zotero_image_name}`;
 		fs.copyFileSync(zotero_image_path, Obsidian_image_Path);
+		await new Promise((resolve) => setTimeout(resolve, 300));
 		let id = await ea.addImage(null, null, zotero_image_name);
 		let el = ea.getElement(id);
 		el.link = `[${zotero_author}](${zotero_link})`;
-		await new Promise((resolve) => setTimeout(resolve, 300));
 		await ea.addElementsToView(true, true, false);
 	}
 }
@@ -230,4 +230,8 @@ function match_zotero_image(text) {
 	const regex = /annotation=(\w*)/;
 	const matches = text.match(regex);
 	return matches ? matches[1] : "";
+}
+
+function delay(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
 }
