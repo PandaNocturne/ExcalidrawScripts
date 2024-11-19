@@ -69,7 +69,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 ### FrameAutoSize
 
 ```excalidraw-script-install
-https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FameAutoSize.md
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FrameAutoSize.md
 ```
 
 - Author：熊猫别熬夜
@@ -298,7 +298,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 ### BookxnoteToExcalidraw
 
 ```excalidraw-script-install
-https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/BookxnoteToExcalidraw.[]
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/BookxnoteToExcalidraw.md
 ```
 
 - Author：熊猫别熬夜
