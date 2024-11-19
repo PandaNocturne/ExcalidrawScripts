@@ -172,6 +172,8 @@ class PKMerExcalidrawScriptMarket extends ea.obsidian.Modal {
     div.modal:has(.excalidraw-script-market) {
       width: 900px;
       position: relative;
+      overflow-y: scroll;
+      overflow-x: hidden;
 
       img {
         &:not(.link-favicon) {
