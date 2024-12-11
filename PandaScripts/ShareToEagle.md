@@ -2,7 +2,7 @@
  * @Author: 熊猫别熬夜 
  * @Date: 2024-08-19 00:32:03 
  * @Last Modified by: 熊猫别熬夜
- * @Last Modified time: 2024-08-20 01:45:29
+ * @Last Modified time: 2024-12-11 21:58:11
  */
 let settings = ea.getScriptSettings();
 // 加载默认值
@@ -185,10 +185,10 @@ if (returnLinkEnabled) {
   let adURI = "";
   await app.fileManager.processFrontMatter(activeFile, fm => {
     adURI = fm.uid ? fm.uid : moment(ctime).format(uidFormat);
-    fm.uid = moment(ctime).format(uidFormat);
+    fm.uid = adURI;
   });
   await ea.addElementsToView();
-  data.website = `obsidian://advanced-uri?vault=${vaultName}&uid=${adURI}`;
+  data.website = `obsidian://adv-uri?vault=${vaultName}&uid=${adURI}`;
 }
 
 
