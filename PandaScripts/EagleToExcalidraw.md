@@ -249,10 +249,10 @@ if (selectedEls.length === 1) {
         let adURI = "";
         await app.fileManager.processFrontMatter(activeFile, fm => {
             adURI = fm.uid ? fm.uid : moment(ctime).format(uidFormat);
-            fm.uid = moment(ctime).format(uidFormat);
+            fm.uid = adURI;
         });
         await ea.addElementsToView();
-        data.website = `obsidian://advanced-uri?vault=${vaultName}&uid=${adURI}`;
+        data.website = `obsidian://adv-uri?vault=${vaultName}&uid=${adURI}`;
     }
 
     const requestOptions = {
