@@ -36,6 +36,16 @@ let selectedEls = ea.getViewSelectedElements();
 // ! Excalidraw → Eagle
 if (selectedEls.length === 1) {
     let selectedEl = selectedEls[0];
+
+    // 2024-12-11_21-36 如果存在eagleLink，则直接打开链接，不用根据文件名来创建回链
+    if (selectedEl.customData?.eagleLink) {
+        // 打开链接
+        window.open(selectedEl.customData.eagleLink);
+        console.log(selectedEl.customData.eagleLink);
+        return;
+    }
+
+    // 依据文件名来创建Eagle的回链
     let embeddedFile = ea.targetView.excalidrawData.getFile(selectedEl.fileId);
     if (!embeddedFile) {
         new Notice("Can't find file: " + selectedEl.fileId);
@@ -481,9 +491,20 @@ elEl.ondrop = async function (event) {
                     // 将el.link的值设置为Eagle的回链
                     el.link = `eagle://item/${eagleId}`;
                 }
+
+                // 2024-12-11_21-33 添加自定义数据 eagleLink
+                if (!el.customData) {
+                    el.customData = {
+                        eagleLink: ""
+                    };
+                }
+
+                el.customData.eagleLink = `eagle://item/${eagleId}`;
             }
         }
     }
+
+
 
     await ea.addElementsToView(true, true, false);
     if (ea.targetView.draginfoDiv) {
