@@ -111,7 +111,7 @@ if (selectedEls.length === 1) {
 
     let base64 = "";
     // 
-    await ea.targetView.svg(ea.targetView.getScene(true), undefined, false, false).then(svg => {
+    await ea.targetView.svg(ea.targetView.getScene(true), undefined, true).then(svg => {
         base64 = `data:image/svg+xml;base64,${btoa(
             unescape(encodeURIComponent(svg.outerHTML)),
         )}`;
