@@ -168,7 +168,7 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 		let zotero_image_path = `${zotero_library_path}/${zotero_image_name}`;
 		fs.copyFileSync(zotero_image_path, Obsidian_image_Path);
 		await new Promise((resolve) => setTimeout(resolve, 300));
-		let id = await ea.addImage(null, null, zotero_image_name);
+		let id = await ea.addImage(0,0, zotero_image_name);
 		let el = ea.getElement(id);
 		el.link = `[${zotero_author}](${zotero_link})`;
 		await ea.addElementsToView(true, true, false);
