@@ -283,12 +283,21 @@ if (!(settings["Don't stop Eagle→Excalidraw"].value)) {
 }
 
 // ! Eagle →  Excalidraw
+
 // 对于从Eagle拖拽过来的文件，以Eagle文件夹名命名，根据后缀名来创建不同的拖拽形式
 let elEl = ea.targetView.containerEl.querySelectorAll(".excalidraw-wrapper")[0];
+elEl.ondragover = function (event) {
+    document.querySelectorAll('.excalidraw-draginfo').forEach(el => {
+        el.style.visibility = 'visible';
+    });
+};
 elEl.ondrop = async function (event) {
     console.log("ondrop");
     event.preventDefault();
-
+    // 不显示 .excalidraw-draginfo
+    document.querySelectorAll('.excalidraw-draginfo').forEach(el => {
+        el.style.visibility = 'hidden';
+    });
     let el;
     if (event.dataTransfer.types.includes("Files")) {
         console.log("文件类型判断");
@@ -303,13 +312,6 @@ elEl.ondrop = async function (event) {
             }
             console.log(`获取路径：${directoryPath}`);
             if (!directoryPath) continue;
-
-            // 删除所有具有 .excalidraw-draginfo 类的元素
-            const elements = document.querySelectorAll('.excalidraw-draginfo');
-            // 遍历每个元素并将其从 DOM 中删除
-            elements.forEach(element => {
-                element.remove();
-            });
 
             // 清空插入的环境变量
             event.stopPropagation();
@@ -524,6 +526,7 @@ elEl.ondrop = async function (event) {
         document.body.removeChild(ea.targetView.draginfoDiv);
         delete ea.targetView.draginfoDiv;
     }
+
 };
 new Notice("✅EagleToExcalidraw脚本已启动！");
 function convertSvgToPng(base64, scale = 4) {
