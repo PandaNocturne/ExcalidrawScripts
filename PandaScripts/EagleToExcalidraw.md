@@ -292,11 +292,17 @@ elEl.ondrop = async function (event) {
     let el;
     if (event.dataTransfer.types.includes("Files")) {
         console.log("文件类型判断");
+        console.log(event.dataTransfer);
         for (let file of event.dataTransfer.files) {
+            console.log("ondrop", file);
+            // 使用 electron 的 API 获取路径
             let directoryPath = file.path;
-            console.log(directoryPath);
-            if (!directoryPath) continue;
+            if (!directoryPath) {
+                // ref：https://forum.obsidian.md/t/how-to-get-the-source-path-when-drag-and-drop-or-copying-a-file-image-from-outside/96437/2
+                directoryPath = electron.webUtils.getPathForFile(file);
+            }
             console.log(`获取路径：${directoryPath}`);
+            if (!directoryPath) continue;
 
             // 清空插入的环境变量
             event.stopPropagation();
