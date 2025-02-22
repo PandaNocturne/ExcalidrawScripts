@@ -304,6 +304,13 @@ elEl.ondrop = async function (event) {
             console.log(`获取路径：${directoryPath}`);
             if (!directoryPath) continue;
 
+            // 删除所有具有 .excalidraw-draginfo 类的元素
+            const elements = document.querySelectorAll('.excalidraw-draginfo');
+            // 遍历每个元素并将其从 DOM 中删除
+            elements.forEach(element => {
+                element.remove();
+            });
+
             // 清空插入的环境变量
             event.stopPropagation();
             ea.clear();
