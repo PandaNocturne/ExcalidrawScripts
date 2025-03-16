@@ -166,6 +166,11 @@ if (InsertType == "Card") {
 	el.width = 50;
 	el.height = 50;
 } else if (InsertType == "DrawIO") {
+	const folderPath = path.dirname(filePath);
+	if (!app.vault.getFolderByPath(folderPath)) {
+		await app.vault.createFolder(folderPath);
+	}
+	
 	const file = await app.vault.create(filePath + ".svg", `<?xml version="1.0" encoding="UTF-8"?><!--${ea.generateElementId()}-->
 	<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 	<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="121px" height="61px" viewBox="-0.5 -0.5 121 61" content="&lt;mxfile host=&quot;Electron&quot; modified=&quot;2024-03-26T18:36:31.558Z&quot; agent=&quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/114.0.5735.289 Electron/25.9.4 Safari/537.36&quot; version=&quot;22.1.2&quot; etag=&quot;6jUmPoDIbaMuVkNrG8wL&quot; type=&quot;device&quot;&gt;&#10;  &lt;diagram id=&quot;kOIW-Le-9488fyQj6XGg&quot; name=&quot;第 1 页&quot;&gt;&#10;    &lt;mxGraphModel dx=&quot;1044&quot; dy=&quot;631&quot; grid=&quot;1&quot; gridSize=&quot;10&quot; guides=&quot;1&quot; tooltips=&quot;1&quot; connect=&quot;1&quot; arrows=&quot;1&quot; fold=&quot;1&quot; page=&quot;1&quot; pageScale=&quot;1&quot; pageWidth=&quot;1169&quot; pageHeight=&quot;827&quot; math=&quot;0&quot; shadow=&quot;0&quot;&gt;&#10;      &lt;root&gt;&#10;        &lt;mxCell id=&quot;0&quot; /&gt;&#10;        &lt;mxCell id=&quot;1&quot; parent=&quot;0&quot; /&gt;&#10;        &lt;mxCell id=&quot;icEzPTEzaMPsEqdaMNKT-1&quot; value=&quot;&quot; style=&quot;rounded=0;whiteSpace=wrap;html=1;&quot; vertex=&quot;1&quot; parent=&quot;1&quot;&gt;&#10;          &lt;mxGeometry x=&quot;440&quot; y=&quot;200&quot; width=&quot;120&quot; height=&quot;60&quot; as=&quot;geometry&quot; /&gt;&#10;        &lt;/mxCell&gt;&#10;      &lt;/root&gt;&#10;    &lt;/mxGraphModel&gt;&#10;  &lt;/diagram&gt;&#10;&lt;/mxfile&gt;&#10;"><defs/><g><rect x="0" y="0" width="120" height="60" fill="rgb(255, 255, 255)" stroke="rgb(0, 0, 0)" pointer-events="all"/></g></svg>`);
