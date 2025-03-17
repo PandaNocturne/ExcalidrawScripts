@@ -168,7 +168,7 @@ async function processZoteroData(ea, insert_txt, pointerPosition) {
 		let zotero_image_path = `${zotero_library_path}/${zotero_image_name}`;
 		fs.copyFileSync(zotero_image_path, Obsidian_image_Path);
 		await new Promise((resolve) => setTimeout(resolve, 300));
-		let id = await ea.addImage(0,0, zotero_image_name);
+		let id = await ea.addImage(0, 0, zotero_image_name);
 		let el = ea.getElement(id);
 		el.link = `[${zotero_author}](${zotero_link})`;
 		await ea.addElementsToView(true, true, false);
@@ -189,9 +189,13 @@ function processText(text) {
 	text = text.replace(/([\u4e00-\u9fa5]) +/g, '$1');
 	text = text.replace(/ +([\u4e00-\u9fa5])/g, '$1');
 
-	// // // 在中英文之间添加空格
-	// // text = text.replace(/([\u4e00-\u9fa5])([a-zA-Z])/g, '$1 $2');
-	// // text = text.replace(/([a-zA-Z])([\u4e00-\u9fa5])/g, '$1 $2');
+	// 在中英文之间添加空格
+	text = text.replace(/([\u4e00-\u9fa5])([a-zA-Z])/g, '$1 $2');
+	text = text.replace(/([a-zA-Z])([\u4e00-\u9fa5])/g, '$1 $2');
+
+	// 将中文文字之间的英文逗号替换为中文逗号
+	text = text.replace(/([\u4e00-\u9fa5]),\s*([\u4e00-\u9fa5])/g, '$1，$2');
+	text = text.replace(/([\u4e00-\u9fa5]),\s*([\u4e00-\u9fa5])/g, '$1，$2');
 
 	return text;
 }

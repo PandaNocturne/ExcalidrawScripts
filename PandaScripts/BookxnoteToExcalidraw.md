@@ -217,9 +217,13 @@ function processText(text) {
     text = text.replace(/([\u4e00-\u9fa5])\s+/g, '$1');
     text = text.replace(/\s+([\u4e00-\u9fa5])/g, '$1');
 
-    // // 在中英文之间添加空格
-    // text = text.replace(/([\u4e00-\u9fa5])([a-zA-Z])/g, '$1 $2');
-    // text = text.replace(/([a-zA-Z])([\u4e00-\u9fa5])/g, '$1 $2');
+    // 在中英文之间添加空格
+    text = text.replace(/([\u4e00-\u9fa5])([a-zA-Z])/g, '$1 $2');
+    text = text.replace(/([a-zA-Z])([\u4e00-\u9fa5])/g, '$1 $2');
+    // 将中文文字之间的英文逗号替换为中文逗号
+    text = text.replace(/([\u4e00-\u9fa5]),\s*([\u4e00-\u9fa5])/g, '$1，$2'); 
+    text = text.replace(/([\u4e00-\u9fa5]),\s*([\u4e00-\u9fa5])/g, '$1，$2');
+     
 
     return text;
 }
