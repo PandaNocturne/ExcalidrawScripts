@@ -201,7 +201,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 
 ### ImagesGridLayoutTool
 
-```excalidraw- script-install
+```excalidraw-script-install
 https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/ImagesGridLayoutTool.md
 ```
 
