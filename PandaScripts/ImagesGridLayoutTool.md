@@ -1,11 +1,11 @@
 class ArrangeImagesModal extends ea.obsidian.Modal {
     constructor(app, onSubmit) {
         super(app);
-        this.rowCount = 3; 
-        this.colCount = 3; 
+        this.rowCount = 3;
+        this.colCount = 3;
         this.spacingX = 20;
         this.spacingY = 20;
-        this.total = 0;  
+        this.total = 0;
         this.onSubmit = onSubmit;
         this.images = [];
     }
@@ -286,12 +286,19 @@ async function arrangeImages({ rowCount, colCount, spacingX, spacingY, total }) 
         if (img.height > maxHeight) maxHeight = img.height;
     }
 
+    // 计算选中图片的最左上角位置作为基准
+    let minX = Infinity, minY = Infinity;
+    for (const img of images) {
+        if (img.x < minX) minX = img.x;
+        if (img.y < minY) minY = img.y;
+    }
+
     // 排列图片
     for (let idx = 0; idx < images.length; idx++) {
         const row = Math.floor(idx / colCount);
         const col = idx % colCount;
-        const x = col * (maxWidth + spacingX);
-        const y = row * (maxHeight + spacingY);
+        const x = minX + col * (maxWidth + spacingX);
+        const y = minY + row * (maxHeight + spacingY);
         const original = images[idx];
         for (const key in original) {
             if (Object.prototype.hasOwnProperty.call(original, key)) {
