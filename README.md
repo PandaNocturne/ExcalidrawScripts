@@ -199,6 +199,24 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 
 > 这个非常好用，简单但实用
 
+### ImagesGridLayoutTool
+
+```excalidraw - script - install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/ImagesGridLayoutTool.md
+		```
+
+- Author：熊猫别熬夜
+- Description：将选中的图片按行列网格自动排列，支持设置间距与列数。
+
+### UpdateCroppedImageToLocal
+
+```excalidraw - script - install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/UpdateCroppedImageToLocal.md
+		```
+
+- Author：熊猫别熬夜
+- Description：将裁剪的图片更新到本地图片，对本地图片进行裁剪，生成新的图片元素。
+
 ### UploadImageToPicGo
 
 ```excalidraw-script-install
