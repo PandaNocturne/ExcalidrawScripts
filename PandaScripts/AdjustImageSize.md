@@ -2,16 +2,17 @@
  * @Author: 熊猫别熬夜 
  * @Date: 2024-01-31 13:00:21 
  * @Last Modified by: 熊猫别熬夜
- * @Last Modified time: 2024-08-21 20:45:40
+ * @Last Modified time: 2025-07-06 16:20:18
  */
 await ea.addElementsToView();
 // 获取选中的元素
-const selectedEls = ea.getViewSelectedElements().filter(el => el.type === "image");
-const options = ['等高缩放', "等宽缩放", '等比缩放'];
+const selectedEls = ea.getViewSelectedElements().filter(el => el.type === "image" || el.type === "rectangle");
+
+const options = ['等高缩放', "等宽缩放", '等高等宽', '等比缩放'];
 const option = await utils.suggester(options, options, "选择缩放类型");
 if (!option) return;
 
-if (option === options[2]) {
+if (option === options[3]) {
     let scaleRatio = await utils.inputPrompt("缩放比例", null, "1");
     if (!scaleRatio) return;
 
@@ -54,6 +55,13 @@ if (option === options[2]) {
         for (let selectedEl of selectedEls) {
             let rario = height / selectedEl.height;
             selectedEl.width *= rario;
+            selectedEl.height = height;
+        }
+
+    } else if (option === options[2]) {
+        // 等高等宽
+        for (let selectedEl of selectedEls) {
+            selectedEl.width = width;
             selectedEl.height = height;
         }
 
