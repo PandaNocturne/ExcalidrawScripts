@@ -140,7 +140,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Description：借助 Modal Form 插件的表单，给 Excalidraw 画板内的文本添加标签。
 	- ![File-20240427040319310.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318777.gif)
 
-## 图片处理
+## 图片相关
 
 ### ResetImageAspectRatio
 
@@ -206,7 +206,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 ```
 
 - Author：熊猫别熬夜
-- Description：将选中的图片按行列网格自动排列，支持设置间距与列数。
+- Description：图片布局工具，将选中的图片按行列网格自动排列，支持设置间距与列数。
 
 ### UpdateCroppedImageToLocal
 
