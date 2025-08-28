@@ -293,27 +293,37 @@ async function arrangeImages({ rowCount, colCount, spacingX, spacingY, total }) 
         if (img.y < minY) minY = img.y;
     }
 
+    // 按位置排序图片：从上到下，从左到右
+    const sortedImages = [...images].sort((a, b) => {
+        // 首先按Y坐标排序（从上到下）
+        if (Math.abs(a.y - b.y) > 10) { // 允许10px的误差
+            return a.y - b.y;
+        }
+        // Y坐标相近时，按X坐标排序（从左到右）
+        return a.x - b.x;
+    });
+
     // 排列图片
-    for (let idx = 0; idx < images.length; idx++) {
+    for (let idx = 0; idx < sortedImages.length; idx++) {
         const row = Math.floor(idx / colCount);
         const col = idx % colCount;
         const x = minX + col * (maxWidth + spacingX);
         const y = minY + row * (maxHeight + spacingY);
-        const original = images[idx];
+        const original = sortedImages[idx];
         for (const key in original) {
             if (Object.prototype.hasOwnProperty.call(original, key)) {
-                images[idx][key] = original[key];
+                sortedImages[idx][key] = original[key];
             }
         }
-        images[idx].x = x;
-        images[idx].y = y;
+        sortedImages[idx].x = x;
+        sortedImages[idx].y = y;
     }
 
-    await ea.copyViewElementsToEAforEditing(images);
+    await ea.copyViewElementsToEAforEditing(sortedImages);
     await ea.addElementsToView(false, false);
-    await ea.getExcalidrawAPI().history.clear();
+    // await ea.getExcalidrawAPI().history.clear();
     // app.commands.executeCommandById("obsidian-excalidraw-plugin:save");
-    new Notice(`✅已排列${images.length}张图片（${rowCount}行 × ${colCount}列）`);
+    new Notice(`✅已排列${sortedImages.length}张图片（${rowCount}行 × ${colCount}列）`);
 }
 
 new ArrangeImagesModal(app, arrangeImages).open();

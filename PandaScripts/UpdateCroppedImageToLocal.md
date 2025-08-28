@@ -1,11 +1,11 @@
 await ea.addElementsToView();
-const img = ea.getViewSelectedElements().filter(el => el.type === "image");
+const imgs = ea.getViewSelectedElements().filter(el => el.type === "image");
 
 const quickaddApi = this.app.plugins.plugins.quickadd.api;
-const isConfirm = await quickaddApi.yesNoPrompt("图片裁剪确认", `确定要裁剪并覆盖本地的 ${img.length} 张图片吗？`);
+const isConfirm = await quickaddApi.yesNoPrompt("图片裁剪确认", `确定要裁剪并覆盖本地的 ${imgs.length} 张图片吗？`);
 if (!isConfirm) return;
 
-for (const i of img) {
+for (const i of imgs) {
     const currentPath = ea.plugin.filesMaster.get(i.fileId).path;
     const file = app.vault.getAbstractFileByPath(currentPath);
     if (!file) {
@@ -59,8 +59,9 @@ for (const i of img) {
 
     // new Notice("✂️已裁剪图片 " + filePath);
 }
-await ea.addElementsToView(false, true);
-await ea.getExcalidrawAPI().history.clear(); //避免撤消/重做扰乱
+await ea.copyViewElementsToEAforEditing(imgs);
+await ea.addElementsToView(false, false);
+// await ea.getExcalidrawAPI().history.clear(); //避免撤消/重做扰乱
 app.commands.executeCommandById("obsidian-excalidraw-plugin:save");
 new Notice("✅已裁剪所有选中图片");
 
