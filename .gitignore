@@ -10,4 +10,6 @@ Downloaded
 个人测试
 .Archive
 .history
-TestScripts/Anki.js
+.tmp
+.specstory
+TestScripts/
