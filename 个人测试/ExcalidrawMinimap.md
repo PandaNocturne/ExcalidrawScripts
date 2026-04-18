@@ -1,0 +1,600 @@
+/*
+## ExcalidrawMinimap
+切换式小地图脚本。
+- 首次运行：在当前 Excalidraw 视图显示 minimap
+- 再次运行：关闭 minimap
+- 点击 minimap：平移主视图到对应位置
+- 拖动 viewport：连续平移主视图
+- 滚轮：缩放主视图
+
+```javascript
+*/
+
+const api = ea.getExcalidrawAPI();
+if (!api) {
+  new Notice("未获取到 Excalidraw API");
+  return;
+}
+
+const view = ea.targetView;
+const container = view?.containerEl?.querySelector?.(".excalidraw-wrapper") || view?.containerEl;
+if (!container) {
+  new Notice("未找到 Excalidraw 视图容器");
+  return;
+}
+
+const MINIMAP_ID = "ea-excalidraw-minimap";
+const GLOBAL_KEY = "__eaExcalidrawMinimap__";
+const SETTINGS_KEY = "ExcalidrawMinimapSettings";
+const POSITION_STYLES = ["top-left", "top-right", "bottom-right", "bottom-left"];
+
+const DEFAULT_CONFIG = {
+  width: 220,
+  height: 160,
+  padding: 120,
+  side: "bottom-right",
+  offset: 12,
+  background: "rgba(20,20,20,0.22)",
+  border: "1px solid rgba(255,255,255,0.18)",
+  frameFill: "rgba(120,180,255,0.22)",
+  frameStroke: "rgba(120,180,255,0.8)",
+  elementFill: "rgba(230,230,230,0.7)",
+  elementStroke: "rgba(255,255,255,0.24)",
+  viewportFill: "rgba(255,165,0,0.14)",
+  viewportStroke: "rgba(255,165,0,0.95)",
+  throttleMs: 80,
+  zoomStep: 1.12,
+  minZoom: 0.1,
+  maxZoom: 8,
+};
+
+const loadSettings = () => {
+  const saved = ea.getScriptSettings?.() || {};
+  return {
+    ...DEFAULT_CONFIG,
+    width: Number(saved[SETTINGS_KEY]?.width ?? DEFAULT_CONFIG.width),
+    height: Number(saved[SETTINGS_KEY]?.height ?? DEFAULT_CONFIG.height),
+    side: POSITION_STYLES.includes(saved[SETTINGS_KEY]?.side) ? saved[SETTINGS_KEY].side : DEFAULT_CONFIG.side,
+    offset: Number(saved[SETTINGS_KEY]?.offset ?? DEFAULT_CONFIG.offset),
+  };
+};
+
+const CONFIG = loadSettings();
+
+const saveSettings = () => {
+  const current = ea.getScriptSettings?.() || {};
+  current[SETTINGS_KEY] = {
+    width: CONFIG.width,
+    height: CONFIG.height,
+    side: CONFIG.side,
+    offset: CONFIG.offset,
+  };
+  ea.setScriptSettings?.(current);
+};
+
+const existing = window[GLOBAL_KEY];
+if (existing?.cleanup) {
+  existing.cleanup();
+  new Notice("Minimap 已关闭");
+  return;
+}
+
+const state = {
+  unsub: null,
+  disposed: false,
+  raf: 0,
+  lastRenderAt: 0,
+  sceneBounds: null,
+  viewportMiniBounds: null,
+  draggingViewport: false,
+};
+
+const ensureRelativePosition = (el) => {
+  const style = window.getComputedStyle(el);
+  if (style.position === "static") {
+    el.style.position = "relative";
+  }
+};
+
+const applyPlacement = () => {
+  root.style.left = "";
+  root.style.right = "";
+  root.style.top = "";
+  root.style.bottom = "";
+
+  if (CONFIG.side === "top-left") {
+    root.style.left = `${CONFIG.offset}px`;
+    root.style.top = `${CONFIG.offset}px`;
+  }
+  if (CONFIG.side === "top-right") {
+    root.style.right = `${CONFIG.offset}px`;
+    root.style.top = `${CONFIG.offset}px`;
+  }
+  if (CONFIG.side === "bottom-right") {
+    root.style.right = `${CONFIG.offset}px`;
+    root.style.bottom = `${CONFIG.offset}px`;
+  }
+  if (CONFIG.side === "bottom-left") {
+    root.style.left = `${CONFIG.offset}px`;
+    root.style.bottom = `${CONFIG.offset}px`;
+  }
+};
+
+const refreshRootSize = () => {
+  root.style.width = `${CONFIG.width}px`;
+  root.style.height = `${CONFIG.height}px`;
+  svg.setAttribute("width", String(CONFIG.width));
+  svg.setAttribute("height", String(CONFIG.height));
+  svg.setAttribute("viewBox", `0 0 ${CONFIG.width} ${CONFIG.height}`);
+  settingsButton.style.right = "8px";
+  settingsButton.style.top = "8px";
+  applyPlacement();
+};
+
+const openSettingsModal = () => {
+  const modal = new ea.obsidian.Modal(app);
+  modal.titleEl.setText("Minimap 设置");
+  modal.modalEl.style.zIndex = "1000";
+
+  const draft = {
+    width: String(CONFIG.width),
+    height: String(CONFIG.height),
+    side: CONFIG.side,
+    offset: String(CONFIG.offset),
+  };
+
+  new ea.obsidian.Setting(modal.contentEl)
+    .setName("宽度")
+    .setDesc("minimap 宽度")
+    .addText(text => {
+      text.setPlaceholder("220");
+      text.setValue(draft.width);
+      text.onChange(value => draft.width = value);
+    });
+
+  new ea.obsidian.Setting(modal.contentEl)
+    .setName("高度")
+    .setDesc("minimap 高度")
+    .addText(text => {
+      text.setPlaceholder("160");
+      text.setValue(draft.height);
+      text.onChange(value => draft.height = value);
+    });
+
+  new ea.obsidian.Setting(modal.contentEl)
+    .setName("位置")
+    .setDesc("左上、右上、右下、左下")
+    .addDropdown(dropdown => {
+      dropdown
+        .addOption("top-left", "左上")
+        .addOption("top-right", "右上")
+        .addOption("bottom-right", "右下")
+        .addOption("bottom-left", "左下")
+        .setValue(draft.side)
+        .onChange(value => draft.side = value);
+    });
+
+  new ea.obsidian.Setting(modal.contentEl)
+    .setName("页边距")
+    .setDesc("距离边缘的像素")
+    .addText(text => {
+      text.setPlaceholder("12");
+      text.setValue(draft.offset);
+      text.onChange(value => draft.offset = value);
+    });
+
+  new ea.obsidian.Setting(modal.contentEl)
+    .addButton(btn => btn
+      .setButtonText("保存")
+      .setCta()
+      .onClick(() => {
+        const width = Number(draft.width);
+        const height = Number(draft.height);
+        const offset = Number(draft.offset);
+
+        if (!Number.isFinite(width) || width < 80) {
+          new Notice("宽度至少为 80");
+          return;
+        }
+        if (!Number.isFinite(height) || height < 60) {
+          new Notice("高度至少为 60");
+          return;
+        }
+        if (!Number.isFinite(offset) || offset < 0) {
+          new Notice("页边距不能小于 0");
+          return;
+        }
+        if (!POSITION_STYLES.includes(draft.side)) {
+          new Notice("位置参数无效");
+          return;
+        }
+
+        CONFIG.width = Math.round(width);
+        CONFIG.height = Math.round(height);
+        CONFIG.side = draft.side;
+        CONFIG.offset = Math.round(offset);
+        saveSettings();
+        refreshRootSize();
+        render();
+        modal.close();
+      }))
+    .addButton(btn => btn
+      .setButtonText("取消")
+      .onClick(() => modal.close()));
+
+  modal.open();
+};
+
+const getRenderableElements = () => {
+  return api
+    .getSceneElements()
+    .filter((el) => !el.isDeleted)
+    .filter((el) => el.width && el.height)
+    .filter((el) => !["selection"].includes(el.type));
+};
+
+const getSceneBounds = (elements) => {
+  if (!elements.length) {
+    return { minX: -500, minY: -500, maxX: 500, maxY: 500, width: 1000, height: 1000 };
+  }
+
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const el of elements) {
+    minX = Math.min(minX, el.x);
+    minY = Math.min(minY, el.y);
+    maxX = Math.max(maxX, el.x + el.width);
+    maxY = Math.max(maxY, el.y + el.height);
+  }
+
+  minX -= CONFIG.padding;
+  minY -= CONFIG.padding;
+  maxX += CONFIG.padding;
+  maxY += CONFIG.padding;
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
+  };
+};
+
+const getViewportBounds = () => {
+  const appState = api.getAppState();
+  const zoom = appState.zoom?.value || 1;
+  const viewBg = container.querySelector(".excalidraw__canvas") || container;
+  const rect = viewBg.getBoundingClientRect();
+  const width = rect.width / zoom;
+  const height = rect.height / zoom;
+  const minX = -appState.scrollX;
+  const minY = -appState.scrollY;
+
+  return {
+    minX,
+    minY,
+    maxX: minX + width,
+    maxY: minY + height,
+    width,
+    height,
+  };
+};
+
+const mapSceneToMini = (x, y, bounds) => ({
+  x: ((x - bounds.minX) / bounds.width) * CONFIG.width,
+  y: ((y - bounds.minY) / bounds.height) * CONFIG.height,
+});
+
+const mapMiniToScene = (x, y, bounds) => ({
+  x: bounds.minX + (x / CONFIG.width) * bounds.width,
+  y: bounds.minY + (y / CONFIG.height) * bounds.height,
+});
+
+ensureRelativePosition(container);
+
+const root = document.createElement("div");
+root.id = MINIMAP_ID;
+root.style.position = "absolute";
+root.style.zIndex = "30";
+root.style.overflow = "hidden";
+root.style.border = CONFIG.border;
+root.style.borderRadius = "8px";
+root.style.background = CONFIG.background;
+root.style.backdropFilter = "blur(4px)";
+root.style.cursor = "pointer";
+root.style.userSelect = "none";
+root.style.boxShadow = "0 8px 24px rgba(0,0,0,0.18)";
+root.style.pointerEvents = "auto";
+root.style.opacity = "0.92";
+
+const settingsButton = document.createElement("button");
+settingsButton.type = "button";
+settingsButton.textContent = "⚙";
+settingsButton.style.position = "absolute";
+settingsButton.style.zIndex = "3";
+settingsButton.style.width = "22px";
+settingsButton.style.height = "22px";
+settingsButton.style.padding = "0";
+settingsButton.style.border = "none";
+settingsButton.style.borderRadius = "999px";
+settingsButton.style.background = "rgba(20,20,20,0.45)";
+settingsButton.style.color = "rgba(255,255,255,0.9)";
+settingsButton.style.cursor = "pointer";
+settingsButton.style.display = "flex";
+settingsButton.style.alignItems = "center";
+settingsButton.style.justifyContent = "center";
+settingsButton.style.fontSize = "12px";
+settingsButton.style.lineHeight = "1";
+settingsButton.style.pointerEvents = "auto";
+settingsButton.style.opacity = "0";
+settingsButton.style.transition = "opacity 120ms ease";
+settingsButton.title = "设置 minimap";
+
+const svgNs = "http://www.w3.org/2000/svg";
+const svg = document.createElementNS(svgNs, "svg");
+svg.style.display = "block";
+svg.style.width = "100%";
+svg.style.height = "100%";
+
+root.appendChild(svg);
+root.appendChild(settingsButton);
+container.appendChild(root);
+refreshRootSize();
+
+const clearSvg = () => {
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+};
+
+const createSvgEl = (name, attrs = {}) => {
+  const el = document.createElementNS(svgNs, name);
+  for (const [k, v] of Object.entries(attrs)) {
+    el.setAttribute(k, String(v));
+  }
+  return el;
+};
+
+const render = () => {
+  if (state.disposed) return;
+
+  const now = Date.now();
+  if (now - state.lastRenderAt < CONFIG.throttleMs) {
+    cancelAnimationFrame(state.raf);
+    state.raf = requestAnimationFrame(render);
+    return;
+  }
+  state.lastRenderAt = now;
+
+  const elements = getRenderableElements();
+  const sceneBounds = getSceneBounds(elements);
+  const viewportBounds = getViewportBounds();
+
+  clearSvg();
+
+  const bg = createSvgEl("rect", {
+    x: 0,
+    y: 0,
+    width: CONFIG.width,
+    height: CONFIG.height,
+    fill: "transparent",
+  });
+  svg.appendChild(bg);
+
+  for (const el of elements) {
+    const p1 = mapSceneToMini(el.x, el.y, sceneBounds);
+    const p2 = mapSceneToMini(el.x + el.width, el.y + el.height, sceneBounds);
+    const isFrame = el.type === "frame";
+    const rect = createSvgEl("rect", {
+      x: p1.x,
+      y: p1.y,
+      width: Math.max(1.2, p2.x - p1.x),
+      height: Math.max(1.2, p2.y - p1.y),
+      rx: isFrame ? 3 : 1,
+      ry: isFrame ? 3 : 1,
+      fill: isFrame ? CONFIG.frameFill : CONFIG.elementFill,
+      stroke: isFrame ? CONFIG.frameStroke : CONFIG.elementStroke,
+      "stroke-width": isFrame ? 1 : 0.6,
+    });
+    svg.appendChild(rect);
+  }
+
+  const vp1 = mapSceneToMini(viewportBounds.minX, viewportBounds.minY, sceneBounds);
+  const vp2 = mapSceneToMini(viewportBounds.maxX, viewportBounds.maxY, sceneBounds);
+  const viewportRect = createSvgEl("rect", {
+    x: vp1.x,
+    y: vp1.y,
+    width: Math.max(2, vp2.x - vp1.x),
+    height: Math.max(2, vp2.y - vp1.y),
+    fill: CONFIG.viewportFill,
+    stroke: CONFIG.viewportStroke,
+    "stroke-width": 1.2,
+  });
+  svg.appendChild(viewportRect);
+
+  state.sceneBounds = sceneBounds;
+  state.viewportMiniBounds = {
+    minX: vp1.x,
+    minY: vp1.y,
+    maxX: vp2.x,
+    maxY: vp2.y,
+    width: Math.max(2, vp2.x - vp1.x),
+    height: Math.max(2, vp2.y - vp1.y),
+  };
+};
+
+const panToScenePoint = (sceneX, sceneY) => {
+  const appState = api.getAppState();
+  const zoom = appState.zoom?.value || 1;
+  const rect = (container.querySelector(".excalidraw__canvas") || container).getBoundingClientRect();
+  const viewportWidth = rect.width / zoom;
+  const viewportHeight = rect.height / zoom;
+
+  api.updateScene({
+    appState: {
+      ...appState,
+      scrollX: -(sceneX - viewportWidth / 2),
+      scrollY: -(sceneY - viewportHeight / 2),
+    },
+    commitToHistory: false,
+  });
+};
+
+const isInViewportRect = (x, y) => {
+  const vp = state.viewportMiniBounds;
+  if (!vp) return false;
+  return x >= vp.minX && x <= vp.maxX && y >= vp.minY && y <= vp.maxY;
+};
+
+const getMiniPointFromEvent = (evt) => {
+  const rect = root.getBoundingClientRect();
+  return {
+    x: evt.clientX - rect.left,
+    y: evt.clientY - rect.top,
+  };
+};
+
+const moveViewportByMiniPoint = (x, y) => {
+  if (!state.sceneBounds) return;
+  const scenePoint = mapMiniToScene(x, y, state.sceneBounds);
+  panToScenePoint(scenePoint.x, scenePoint.y);
+};
+
+const zoomAtMiniPoint = (x, y, zoomFactor) => {
+  if (!state.sceneBounds) return;
+
+  const appState = api.getAppState();
+  const currentZoom = appState.zoom?.value || 1;
+  const nextZoom = Math.min(CONFIG.maxZoom, Math.max(CONFIG.minZoom, currentZoom * zoomFactor));
+  if (nextZoom === currentZoom) return;
+
+  const scenePoint = mapMiniToScene(x, y, state.sceneBounds);
+  const canvasRect = (container.querySelector(".excalidraw__canvas") || container).getBoundingClientRect();
+  const viewportSceneWidth = canvasRect.width / nextZoom;
+  const viewportSceneHeight = canvasRect.height / nextZoom;
+
+  const rx = x / CONFIG.width;
+  const ry = y / CONFIG.height;
+
+  const newViewportMinX = scenePoint.x - rx * viewportSceneWidth;
+  const newViewportMinY = scenePoint.y - ry * viewportSceneHeight;
+
+  api.updateScene({
+    appState: {
+      ...appState,
+      zoom: {
+        ...appState.zoom,
+        value: nextZoom,
+      },
+      scrollX: -newViewportMinX,
+      scrollY: -newViewportMinY,
+    },
+    commitToHistory: false,
+  });
+};
+
+const handlePointerDown = (evt) => {
+  if (evt.target === settingsButton) return;
+  evt.preventDefault();
+  evt.stopPropagation();
+
+  if (!state.sceneBounds) return;
+
+  const point = getMiniPointFromEvent(evt);
+  state.draggingViewport = isInViewportRect(point.x, point.y);
+
+  if (!state.draggingViewport) {
+    moveViewportByMiniPoint(point.x, point.y);
+    render();
+    return;
+  }
+
+  root.style.cursor = "grabbing";
+  root.setPointerCapture?.(evt.pointerId);
+};
+
+const handlePointerMove = (evt) => {
+  if (!state.draggingViewport) return;
+  evt.preventDefault();
+  evt.stopPropagation();
+
+  const point = getMiniPointFromEvent(evt);
+  moveViewportByMiniPoint(point.x, point.y);
+};
+
+const stopViewportDrag = (evt) => {
+  if (evt) {
+    evt.preventDefault();
+    evt.stopPropagation();
+  }
+  state.draggingViewport = false;
+  root.style.cursor = "pointer";
+  if (evt?.pointerId !== undefined) {
+    root.releasePointerCapture?.(evt.pointerId);
+  }
+};
+
+const handleWheel = (evt) => {
+  if (evt.target === settingsButton) return;
+  evt.preventDefault();
+  evt.stopPropagation();
+
+  if (!state.sceneBounds) return;
+
+  const point = getMiniPointFromEvent(evt);
+  const zoomFactor = evt.deltaY < 0 ? CONFIG.zoomStep : 1 / CONFIG.zoomStep;
+  zoomAtMiniPoint(point.x, point.y, zoomFactor);
+  render();
+};
+
+const handleSettingsClick = (evt) => {
+  evt.preventDefault();
+  evt.stopPropagation();
+  openSettingsModal();
+};
+
+const showSettingsButton = () => {
+  settingsButton.style.opacity = "1";
+};
+
+const hideSettingsButton = () => {
+  settingsButton.style.opacity = "0";
+};
+
+root.addEventListener("pointerenter", showSettingsButton);
+root.addEventListener("pointerleave", hideSettingsButton);
+root.addEventListener("pointerdown", handlePointerDown);
+root.addEventListener("pointermove", handlePointerMove);
+root.addEventListener("pointerup", stopViewportDrag);
+root.addEventListener("pointercancel", stopViewportDrag);
+root.addEventListener("lostpointercapture", stopViewportDrag);
+root.addEventListener("wheel", handleWheel, { passive: false });
+settingsButton.addEventListener("click", handleSettingsClick);
+state.unsub = api.onChange(() => render());
+window.addEventListener("resize", render);
+
+const cleanup = () => {
+  if (state.disposed) return;
+  state.disposed = true;
+  cancelAnimationFrame(state.raf);
+  root.removeEventListener("pointerenter", showSettingsButton);
+  root.removeEventListener("pointerleave", hideSettingsButton);
+  root.removeEventListener("pointerdown", handlePointerDown);
+  root.removeEventListener("pointermove", handlePointerMove);
+  root.removeEventListener("pointerup", stopViewportDrag);
+  root.removeEventListener("pointercancel", stopViewportDrag);
+  root.removeEventListener("lostpointercapture", stopViewportDrag);
+  root.removeEventListener("wheel", handleWheel);
+  settingsButton.removeEventListener("click", handleSettingsClick);
+  state.unsub?.();
+  window.removeEventListener("resize", render);
+  root.remove();
+  delete window[GLOBAL_KEY];
+};
+
+window[GLOBAL_KEY] = { cleanup, render, root };
+render();
+new Notice("Minimap 已开启，再次运行脚本可关闭");
