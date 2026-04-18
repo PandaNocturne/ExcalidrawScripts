@@ -24,13 +24,22 @@ if (!container) {
 }
 
 const MINIMAP_ID = "ea-excalidraw-minimap";
-const GLOBAL_KEY = "__eaExcalidrawMinimap__";
+const GLOBAL_KEY = "__eaExcalidrawMinimapRegistry__";
 const SETTINGS_KEY = "ExcalidrawMinimapSettings";
 const POSITION_STYLES = ["top-left", "top-right", "bottom-right", "bottom-left"];
+
+const registry = window[GLOBAL_KEY] ||= new WeakMap();
+const existing = registry.get(container);
+if (existing?.cleanup) {
+  existing.cleanup();
+  new Notice("当前 Excalidraw 视图的 Minimap 已关闭");
+  return;
+}
 
 const DEFAULT_CONFIG = {
   width: 220,
   height: 160,
+  adaptiveSize: true,
   padding: 120,
   side: "bottom-right",
   offset: 12,
@@ -54,6 +63,7 @@ const loadSettings = () => {
     ...DEFAULT_CONFIG,
     width: Number(saved[SETTINGS_KEY]?.width ?? DEFAULT_CONFIG.width),
     height: Number(saved[SETTINGS_KEY]?.height ?? DEFAULT_CONFIG.height),
+    adaptiveSize: saved[SETTINGS_KEY]?.adaptiveSize ?? DEFAULT_CONFIG.adaptiveSize,
     side: POSITION_STYLES.includes(saved[SETTINGS_KEY]?.side) ? saved[SETTINGS_KEY].side : DEFAULT_CONFIG.side,
     offset: Number(saved[SETTINGS_KEY]?.offset ?? DEFAULT_CONFIG.offset),
   };
@@ -66,18 +76,12 @@ const saveSettings = () => {
   current[SETTINGS_KEY] = {
     width: CONFIG.width,
     height: CONFIG.height,
+    adaptiveSize: CONFIG.adaptiveSize,
     side: CONFIG.side,
     offset: CONFIG.offset,
   };
   ea.setScriptSettings?.(current);
 };
-
-const existing = window[GLOBAL_KEY];
-if (existing?.cleanup) {
-  existing.cleanup();
-  new Notice("Minimap 已关闭");
-  return;
-}
 
 const state = {
   unsub: null,
@@ -87,6 +91,11 @@ const state = {
   sceneBounds: null,
   viewportMiniBounds: null,
   draggingViewport: false,
+  renderWidth: CONFIG.width,
+  renderHeight: CONFIG.height,
+  renderScale: 1,
+  renderOffsetX: 0,
+  renderOffsetY: 0,
 };
 
 const ensureRelativePosition = (el) => {
@@ -120,12 +129,55 @@ const applyPlacement = () => {
   }
 };
 
+const computeRenderMetrics = (bounds) => {
+  const maxWidth = Math.max(80, Number(CONFIG.width) || DEFAULT_CONFIG.width);
+  const maxHeight = Math.max(60, Number(CONFIG.height) || DEFAULT_CONFIG.height);
+  const safeWidth = Math.max(1, bounds?.width || 1);
+  const safeHeight = Math.max(1, bounds?.height || 1);
+
+  if (!CONFIG.adaptiveSize) {
+    const scale = Math.min(maxWidth / safeWidth, maxHeight / safeHeight);
+    return {
+      width: maxWidth,
+      height: maxHeight,
+      scale,
+      offsetX: (maxWidth - safeWidth * scale) / 2,
+      offsetY: (maxHeight - safeHeight * scale) / 2,
+    };
+  }
+
+  const sceneRatio = safeWidth / safeHeight;
+  const maxRatio = maxWidth / maxHeight;
+
+  let width;
+  let height;
+  if (sceneRatio >= maxRatio) {
+    width = maxWidth;
+    height = Math.max(60, Math.round(width / sceneRatio));
+  } else {
+    height = maxHeight;
+    width = Math.max(80, Math.round(height * sceneRatio));
+  }
+
+  width = Math.min(maxWidth, width);
+  height = Math.min(maxHeight, height);
+
+  const scale = Math.min(width / safeWidth, height / safeHeight);
+  return {
+    width,
+    height,
+    scale,
+    offsetX: (width - safeWidth * scale) / 2,
+    offsetY: (height - safeHeight * scale) / 2,
+  };
+};
+
 const refreshRootSize = () => {
-  root.style.width = `${CONFIG.width}px`;
-  root.style.height = `${CONFIG.height}px`;
-  svg.setAttribute("width", String(CONFIG.width));
-  svg.setAttribute("height", String(CONFIG.height));
-  svg.setAttribute("viewBox", `0 0 ${CONFIG.width} ${CONFIG.height}`);
+  root.style.width = `${state.renderWidth}px`;
+  root.style.height = `${state.renderHeight}px`;
+  svg.setAttribute("width", String(state.renderWidth));
+  svg.setAttribute("height", String(state.renderHeight));
+  svg.setAttribute("viewBox", `0 0 ${state.renderWidth} ${state.renderHeight}`);
   settingsButton.style.right = "8px";
   settingsButton.style.top = "8px";
   applyPlacement();
@@ -136,29 +188,97 @@ const openSettingsModal = () => {
   modal.titleEl.setText("Minimap 设置");
   modal.modalEl.style.zIndex = "1000";
 
+  const snapshot = {
+    width: CONFIG.width,
+    height: CONFIG.height,
+    adaptiveSize: CONFIG.adaptiveSize,
+    side: CONFIG.side,
+    offset: CONFIG.offset,
+  };
+
   const draft = {
     width: String(CONFIG.width),
     height: String(CONFIG.height),
+    adaptiveSize: CONFIG.adaptiveSize,
     side: CONFIG.side,
     offset: String(CONFIG.offset),
   };
 
+  let committed = false;
+
+  const applyDraft = ({ persist = false } = {}) => {
+    const width = Number(draft.width);
+    const height = Number(draft.height);
+    const offset = Number(draft.offset);
+
+    if (!Number.isFinite(width) || width < 80) return false;
+    if (!Number.isFinite(height) || height < 60) return false;
+    if (!Number.isFinite(offset) || offset < 0) return false;
+    if (!POSITION_STYLES.includes(draft.side)) return false;
+
+    CONFIG.width = Math.round(width);
+    CONFIG.height = Math.round(height);
+    CONFIG.adaptiveSize = draft.adaptiveSize;
+    CONFIG.side = draft.side;
+    CONFIG.offset = Math.round(offset);
+
+    if (persist) {
+      saveSettings();
+      committed = true;
+    }
+
+    render();
+    return true;
+  };
+
+  const restoreSnapshot = () => {
+    CONFIG.width = snapshot.width;
+    CONFIG.height = snapshot.height;
+    CONFIG.adaptiveSize = snapshot.adaptiveSize;
+    CONFIG.side = snapshot.side;
+    CONFIG.offset = snapshot.offset;
+    render();
+  };
+
+  modal.onClose = () => {
+    if (!committed) {
+      restoreSnapshot();
+    }
+  };
+
   new ea.obsidian.Setting(modal.contentEl)
-    .setName("宽度")
-    .setDesc("minimap 宽度")
+    .setName("宽度上限")
+    .setDesc("minimap 最大宽度")
     .addText(text => {
       text.setPlaceholder("220");
       text.setValue(draft.width);
-      text.onChange(value => draft.width = value);
+      text.onChange(value => {
+        draft.width = value;
+        applyDraft();
+      });
     });
 
   new ea.obsidian.Setting(modal.contentEl)
-    .setName("高度")
-    .setDesc("minimap 高度")
+    .setName("高度上限")
+    .setDesc("minimap 最大高度")
     .addText(text => {
       text.setPlaceholder("160");
       text.setValue(draft.height);
-      text.onChange(value => draft.height = value);
+      text.onChange(value => {
+        draft.height = value;
+        applyDraft();
+      });
+    });
+
+  new ea.obsidian.Setting(modal.contentEl)
+    .setName("自适应 minimap 尺寸上限")
+    .setDesc("按内容比例在最大宽高内自动调整 minimap 实际尺寸")
+    .addToggle(toggle => {
+      toggle.setValue(draft.adaptiveSize);
+      toggle.onChange(value => {
+        draft.adaptiveSize = value;
+        applyDraft();
+      });
     });
 
   new ea.obsidian.Setting(modal.contentEl)
@@ -171,7 +291,10 @@ const openSettingsModal = () => {
         .addOption("bottom-right", "右下")
         .addOption("bottom-left", "左下")
         .setValue(draft.side)
-        .onChange(value => draft.side = value);
+        .onChange(value => {
+          draft.side = value;
+          applyDraft();
+        });
     });
 
   new ea.obsidian.Setting(modal.contentEl)
@@ -180,7 +303,10 @@ const openSettingsModal = () => {
     .addText(text => {
       text.setPlaceholder("12");
       text.setValue(draft.offset);
-      text.onChange(value => draft.offset = value);
+      text.onChange(value => {
+        draft.offset = value;
+        applyDraft();
+      });
     });
 
   new ea.obsidian.Setting(modal.contentEl)
@@ -209,13 +335,7 @@ const openSettingsModal = () => {
           return;
         }
 
-        CONFIG.width = Math.round(width);
-        CONFIG.height = Math.round(height);
-        CONFIG.side = draft.side;
-        CONFIG.offset = Math.round(offset);
-        saveSettings();
-        refreshRootSize();
-        render();
+        applyDraft({ persist: true });
         modal.close();
       }))
     .addButton(btn => btn
@@ -230,7 +350,7 @@ const getRenderableElements = () => {
     .getSceneElements()
     .filter((el) => !el.isDeleted)
     .filter((el) => el.width && el.height)
-    .filter((el) => !["selection"].includes(el.type));
+    .filter((el) => !["selection", "arrow", "line"].includes(el.type));
 };
 
 const getSceneBounds = (elements) => {
@@ -286,13 +406,13 @@ const getViewportBounds = () => {
 };
 
 const mapSceneToMini = (x, y, bounds) => ({
-  x: ((x - bounds.minX) / bounds.width) * CONFIG.width,
-  y: ((y - bounds.minY) / bounds.height) * CONFIG.height,
+  x: state.renderOffsetX + (x - bounds.minX) * state.renderScale,
+  y: state.renderOffsetY + (y - bounds.minY) * state.renderScale,
 });
 
 const mapMiniToScene = (x, y, bounds) => ({
-  x: bounds.minX + (x / CONFIG.width) * bounds.width,
-  y: bounds.minY + (y / CONFIG.height) * bounds.height,
+  x: bounds.minX + (x - state.renderOffsetX) / state.renderScale,
+  y: bounds.minY + (y - state.renderOffsetY) / state.renderScale,
 });
 
 ensureRelativePosition(container);
@@ -344,7 +464,6 @@ svg.style.height = "100%";
 root.appendChild(svg);
 root.appendChild(settingsButton);
 container.appendChild(root);
-refreshRootSize();
 
 const clearSvg = () => {
   while (svg.firstChild) svg.removeChild(svg.firstChild);
@@ -372,14 +491,22 @@ const render = () => {
   const elements = getRenderableElements();
   const sceneBounds = getSceneBounds(elements);
   const viewportBounds = getViewportBounds();
+  const metrics = computeRenderMetrics(sceneBounds);
+
+  state.renderWidth = metrics.width;
+  state.renderHeight = metrics.height;
+  state.renderScale = metrics.scale;
+  state.renderOffsetX = metrics.offsetX;
+  state.renderOffsetY = metrics.offsetY;
+  refreshRootSize();
 
   clearSvg();
 
   const bg = createSvgEl("rect", {
     x: 0,
     y: 0,
-    width: CONFIG.width,
-    height: CONFIG.height,
+    width: state.renderWidth,
+    height: state.renderHeight,
     fill: "transparent",
   });
   svg.appendChild(bg);
@@ -471,13 +598,17 @@ const zoomAtMiniPoint = (x, y, zoomFactor) => {
   const nextZoom = Math.min(CONFIG.maxZoom, Math.max(CONFIG.minZoom, currentZoom * zoomFactor));
   if (nextZoom === currentZoom) return;
 
-  const scenePoint = mapMiniToScene(x, y, state.sceneBounds);
+  const clampedX = Math.max(state.renderOffsetX, Math.min(state.renderWidth, x));
+  const clampedY = Math.max(state.renderOffsetY, Math.min(state.renderHeight, y));
+  const scenePoint = mapMiniToScene(clampedX, clampedY, state.sceneBounds);
   const canvasRect = (container.querySelector(".excalidraw__canvas") || container).getBoundingClientRect();
   const viewportSceneWidth = canvasRect.width / nextZoom;
   const viewportSceneHeight = canvasRect.height / nextZoom;
 
-  const rx = x / CONFIG.width;
-  const ry = y / CONFIG.height;
+  const usableWidth = Math.max(1, state.renderWidth - state.renderOffsetX * 2);
+  const usableHeight = Math.max(1, state.renderHeight - state.renderOffsetY * 2);
+  const rx = Math.max(0, Math.min(1, (clampedX - state.renderOffsetX) / usableWidth));
+  const ry = Math.max(0, Math.min(1, (clampedY - state.renderOffsetY) / usableHeight));
 
   const newViewportMinX = scenePoint.x - rx * viewportSceneWidth;
   const newViewportMinY = scenePoint.y - ry * viewportSceneHeight;
@@ -592,9 +723,9 @@ const cleanup = () => {
   state.unsub?.();
   window.removeEventListener("resize", render);
   root.remove();
-  delete window[GLOBAL_KEY];
+  registry.delete(container);
 };
 
-window[GLOBAL_KEY] = { cleanup, render, root };
+registry.set(container, { cleanup, render, root, container, view });
 render();
-new Notice("Minimap 已开启，再次运行脚本可关闭");
+new Notice("当前 Excalidraw 视图的 Minimap 已开启，再次运行脚本可关闭");
