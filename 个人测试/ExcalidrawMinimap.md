@@ -49,11 +49,15 @@ const DEFAULT_CONFIG = {
   background: "rgba(20,20,20,0.22)",
   border: "1px solid rgba(255,255,255,0.18)",
   frameFill: "rgba(120,180,255,0.22)",
-  frameStroke: "rgba(120,180,255,0.8)",
+  frameStroke: "rgba(93,156,236,0.82)",
+  imageFill: "rgba(102, 214, 154, 0.42)",
+  imageStroke: "rgba(72, 186, 127, 0.72)",
+  embeddableFill: "rgba(190, 144, 209, 0.42)",
+  embeddableStroke: "rgba(167, 114, 190, 0.72)",
   elementFill: "rgba(230,230,230,0.7)",
   elementStroke: "rgba(255,255,255,0.24)",
-  viewportFill: "rgba(255,165,0,0.14)",
-  viewportStroke: "rgba(255,165,0,0.95)",
+  viewportFill: "rgba(255,165,0,0.16)",
+  viewportStroke: "rgba(255,140,0,0.96)",
   throttleMs: 80,
   zoomStep: 1.12,
   minZoom: 0.1,
@@ -505,6 +509,42 @@ const createSvgEl = (name, attrs = {}) => {
   return el;
 };
 
+const getElementMiniStyle = (el) => {
+  if (el.type === "frame") {
+    return {
+      fill: CONFIG.frameFill,
+      stroke: CONFIG.frameStroke,
+      strokeWidth: 1,
+      radius: 3,
+    };
+  }
+
+  if (el.type === "image") {
+    return {
+      fill: CONFIG.imageFill,
+      stroke: CONFIG.imageStroke,
+      strokeWidth: 0.8,
+      radius: 1,
+    };
+  }
+
+  if (el.type === "embeddable") {
+    return {
+      fill: CONFIG.embeddableFill,
+      stroke: CONFIG.embeddableStroke,
+      strokeWidth: 0.8,
+      radius: 1,
+    };
+  }
+
+  return {
+    fill: CONFIG.elementFill,
+    stroke: CONFIG.elementStroke,
+    strokeWidth: 0.6,
+    radius: 1,
+  };
+};
+
 const render = () => {
   if (state.disposed) return;
 
@@ -543,17 +583,17 @@ const render = () => {
   for (const el of elements) {
     const p1 = mapSceneToMini(el.x, el.y, sceneBounds);
     const p2 = mapSceneToMini(el.x + el.width, el.y + el.height, sceneBounds);
-    const isFrame = el.type === "frame";
+    const miniStyle = getElementMiniStyle(el);
     const rect = createSvgEl("rect", {
       x: p1.x,
       y: p1.y,
       width: Math.max(1.2, p2.x - p1.x),
       height: Math.max(1.2, p2.y - p1.y),
-      rx: isFrame ? 3 : 1,
-      ry: isFrame ? 3 : 1,
-      fill: isFrame ? CONFIG.frameFill : CONFIG.elementFill,
-      stroke: isFrame ? CONFIG.frameStroke : CONFIG.elementStroke,
-      "stroke-width": isFrame ? 1 : 0.6,
+      rx: miniStyle.radius,
+      ry: miniStyle.radius,
+      fill: miniStyle.fill,
+      stroke: miniStyle.stroke,
+      "stroke-width": miniStyle.strokeWidth,
     });
     state.elementMiniBounds.push({
       minX: p1.x,
@@ -646,20 +686,12 @@ const zoomAtMiniPoint = (x, y, zoomFactor) => {
   const nextZoom = Math.min(CONFIG.maxZoom, Math.max(CONFIG.minZoom, currentZoom * zoomFactor));
   if (nextZoom === currentZoom) return;
 
-  const clampedX = Math.max(state.renderOffsetX, Math.min(state.renderWidth, x));
-  const clampedY = Math.max(state.renderOffsetY, Math.min(state.renderHeight, y));
+  const clampedX = Math.max(state.renderOffsetX, Math.min(state.renderWidth - state.renderOffsetX, x));
+  const clampedY = Math.max(state.renderOffsetY, Math.min(state.renderHeight - state.renderOffsetY, y));
   const scenePoint = mapMiniToScene(clampedX, clampedY, state.sceneBounds);
   const canvasRect = (container.querySelector(".excalidraw__canvas") || container).getBoundingClientRect();
   const viewportSceneWidth = canvasRect.width / nextZoom;
   const viewportSceneHeight = canvasRect.height / nextZoom;
-
-  const usableWidth = Math.max(1, state.renderWidth - state.renderOffsetX * 2);
-  const usableHeight = Math.max(1, state.renderHeight - state.renderOffsetY * 2);
-  const rx = Math.max(0, Math.min(1, (clampedX - state.renderOffsetX) / usableWidth));
-  const ry = Math.max(0, Math.min(1, (clampedY - state.renderOffsetY) / usableHeight));
-
-  const newViewportMinX = scenePoint.x - rx * viewportSceneWidth;
-  const newViewportMinY = scenePoint.y - ry * viewportSceneHeight;
 
   api.updateScene({
     appState: {
@@ -668,8 +700,8 @@ const zoomAtMiniPoint = (x, y, zoomFactor) => {
         ...appState.zoom,
         value: nextZoom,
       },
-      scrollX: -newViewportMinX,
-      scrollY: -newViewportMinY,
+      scrollX: -(scenePoint.x - viewportSceneWidth / 2),
+      scrollY: -(scenePoint.y - viewportSceneHeight / 2),
     },
     commitToHistory: false,
   });
