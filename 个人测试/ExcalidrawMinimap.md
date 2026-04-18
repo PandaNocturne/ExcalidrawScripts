@@ -27,6 +27,8 @@ const MINIMAP_ID = "ea-excalidraw-minimap";
 const GLOBAL_KEY = "__eaExcalidrawMinimapRegistry__";
 const SETTINGS_KEY = "ExcalidrawMinimapSettings";
 const POSITION_STYLES = ["top-left", "top-right", "bottom-right", "bottom-left"];
+const ZOOM_TRANSITION_STEP_COUNT = 60;
+const ZOOM_TRANSITION_DELAY = 280;
 
 const registry = window[GLOBAL_KEY] ||= new WeakMap();
 const existing = registry.get(container);
@@ -39,18 +41,23 @@ if (existing?.cleanup) {
 const DEFAULT_CONFIG = {
   width: 220,
   height: 160,
-  adaptiveSize: true,
+  adaptiveSize: false,
+  elementClickAction: "move",
   padding: 120,
   side: "bottom-right",
   offset: 12,
   background: "rgba(20,20,20,0.22)",
   border: "1px solid rgba(255,255,255,0.18)",
   frameFill: "rgba(120,180,255,0.22)",
-  frameStroke: "rgba(120,180,255,0.8)",
+  frameStroke: "rgba(93,156,236,0.82)",
+  imageFill: "rgba(102, 214, 154, 0.42)",
+  imageStroke: "rgba(72, 186, 127, 0.72)",
+  embeddableFill: "rgba(190, 144, 209, 0.42)",
+  embeddableStroke: "rgba(167, 114, 190, 0.72)",
   elementFill: "rgba(230,230,230,0.7)",
   elementStroke: "rgba(255,255,255,0.24)",
-  viewportFill: "rgba(255,165,0,0.14)",
-  viewportStroke: "rgba(255,165,0,0.95)",
+  viewportFill: "rgba(255,165,0,0.16)",
+  viewportStroke: "rgba(255,140,0,0.96)",
   throttleMs: 80,
   zoomStep: 1.12,
   minZoom: 0.1,
@@ -64,6 +71,9 @@ const loadSettings = () => {
     width: Number(saved[SETTINGS_KEY]?.width ?? DEFAULT_CONFIG.width),
     height: Number(saved[SETTINGS_KEY]?.height ?? DEFAULT_CONFIG.height),
     adaptiveSize: saved[SETTINGS_KEY]?.adaptiveSize ?? DEFAULT_CONFIG.adaptiveSize,
+    elementClickAction: ["move", "zoom"].includes(saved[SETTINGS_KEY]?.elementClickAction)
+      ? saved[SETTINGS_KEY].elementClickAction
+      : DEFAULT_CONFIG.elementClickAction,
     side: POSITION_STYLES.includes(saved[SETTINGS_KEY]?.side) ? saved[SETTINGS_KEY].side : DEFAULT_CONFIG.side,
     offset: Number(saved[SETTINGS_KEY]?.offset ?? DEFAULT_CONFIG.offset),
   };
@@ -77,6 +87,7 @@ const saveSettings = () => {
     width: CONFIG.width,
     height: CONFIG.height,
     adaptiveSize: CONFIG.adaptiveSize,
+    elementClickAction: CONFIG.elementClickAction,
     side: CONFIG.side,
     offset: CONFIG.offset,
   };
@@ -90,6 +101,8 @@ const state = {
   lastRenderAt: 0,
   sceneBounds: null,
   viewportMiniBounds: null,
+  elementMiniBounds: [],
+  zoomAnimationFrame: 0,
   draggingViewport: false,
   renderWidth: CONFIG.width,
   renderHeight: CONFIG.height,
@@ -192,6 +205,7 @@ const openSettingsModal = () => {
     width: CONFIG.width,
     height: CONFIG.height,
     adaptiveSize: CONFIG.adaptiveSize,
+    elementClickAction: CONFIG.elementClickAction,
     side: CONFIG.side,
     offset: CONFIG.offset,
   };
@@ -200,6 +214,7 @@ const openSettingsModal = () => {
     width: String(CONFIG.width),
     height: String(CONFIG.height),
     adaptiveSize: CONFIG.adaptiveSize,
+    elementClickAction: CONFIG.elementClickAction,
     side: CONFIG.side,
     offset: String(CONFIG.offset),
   };
@@ -215,10 +230,12 @@ const openSettingsModal = () => {
     if (!Number.isFinite(height) || height < 60) return false;
     if (!Number.isFinite(offset) || offset < 0) return false;
     if (!POSITION_STYLES.includes(draft.side)) return false;
+    if (!["move", "zoom"].includes(draft.elementClickAction)) return false;
 
     CONFIG.width = Math.round(width);
     CONFIG.height = Math.round(height);
     CONFIG.adaptiveSize = draft.adaptiveSize;
+    CONFIG.elementClickAction = draft.elementClickAction;
     CONFIG.side = draft.side;
     CONFIG.offset = Math.round(offset);
 
@@ -235,6 +252,7 @@ const openSettingsModal = () => {
     CONFIG.width = snapshot.width;
     CONFIG.height = snapshot.height;
     CONFIG.adaptiveSize = snapshot.adaptiveSize;
+    CONFIG.elementClickAction = snapshot.elementClickAction;
     CONFIG.side = snapshot.side;
     CONFIG.offset = snapshot.offset;
     render();
@@ -307,6 +325,20 @@ const openSettingsModal = () => {
         draft.offset = value;
         applyDraft();
       });
+    });
+
+  new ea.obsidian.Setting(modal.contentEl)
+    .setName("元素点击事件")
+    .setDesc("点击 minimap 中元素区域时，执行移动或缩放")
+    .addDropdown(dropdown => {
+      dropdown
+        .addOption("move", "移动")
+        .addOption("zoom", "缩放")
+        .setValue(draft.elementClickAction)
+        .onChange(value => {
+          draft.elementClickAction = value;
+          applyDraft();
+        });
     });
 
   new ea.obsidian.Setting(modal.contentEl)
@@ -477,6 +509,42 @@ const createSvgEl = (name, attrs = {}) => {
   return el;
 };
 
+const getElementMiniStyle = (el) => {
+  if (el.type === "frame") {
+    return {
+      fill: CONFIG.frameFill,
+      stroke: CONFIG.frameStroke,
+      strokeWidth: 1,
+      radius: 3,
+    };
+  }
+
+  if (el.type === "image") {
+    return {
+      fill: CONFIG.imageFill,
+      stroke: CONFIG.imageStroke,
+      strokeWidth: 0.8,
+      radius: 1,
+    };
+  }
+
+  if (el.type === "embeddable") {
+    return {
+      fill: CONFIG.embeddableFill,
+      stroke: CONFIG.embeddableStroke,
+      strokeWidth: 0.8,
+      radius: 1,
+    };
+  }
+
+  return {
+    fill: CONFIG.elementFill,
+    stroke: CONFIG.elementStroke,
+    strokeWidth: 0.6,
+    radius: 1,
+  };
+};
+
 const render = () => {
   if (state.disposed) return;
 
@@ -501,6 +569,7 @@ const render = () => {
   refreshRootSize();
 
   clearSvg();
+  state.elementMiniBounds = [];
 
   const bg = createSvgEl("rect", {
     x: 0,
@@ -514,17 +583,30 @@ const render = () => {
   for (const el of elements) {
     const p1 = mapSceneToMini(el.x, el.y, sceneBounds);
     const p2 = mapSceneToMini(el.x + el.width, el.y + el.height, sceneBounds);
-    const isFrame = el.type === "frame";
+    const miniStyle = getElementMiniStyle(el);
     const rect = createSvgEl("rect", {
       x: p1.x,
       y: p1.y,
       width: Math.max(1.2, p2.x - p1.x),
       height: Math.max(1.2, p2.y - p1.y),
-      rx: isFrame ? 3 : 1,
-      ry: isFrame ? 3 : 1,
-      fill: isFrame ? CONFIG.frameFill : CONFIG.elementFill,
-      stroke: isFrame ? CONFIG.frameStroke : CONFIG.elementStroke,
-      "stroke-width": isFrame ? 1 : 0.6,
+      rx: miniStyle.radius,
+      ry: miniStyle.radius,
+      fill: miniStyle.fill,
+      stroke: miniStyle.stroke,
+      "stroke-width": miniStyle.strokeWidth,
+    });
+    state.elementMiniBounds.push({
+      minX: p1.x,
+      minY: p1.y,
+      maxX: p1.x + Math.max(1.2, p2.x - p1.x),
+      maxY: p1.y + Math.max(1.2, p2.y - p1.y),
+      sceneX: el.x,
+      sceneY: el.y,
+      sceneWidth: Math.max(1, el.width),
+      sceneHeight: Math.max(1, el.height),
+      sceneCenterX: el.x + el.width / 2,
+      sceneCenterY: el.y + el.height / 2,
+      element: el,
     });
     svg.appendChild(rect);
   }
@@ -576,6 +658,12 @@ const isInViewportRect = (x, y) => {
   return x >= vp.minX && x <= vp.maxX && y >= vp.minY && y <= vp.maxY;
 };
 
+const getHitElementAtMiniPoint = (x, y) => {
+  return state.elementMiniBounds.find((bounds) => {
+    return x >= bounds.minX && x <= bounds.maxX && y >= bounds.minY && y <= bounds.maxY;
+  }) || null;
+};
+
 const getMiniPointFromEvent = (evt) => {
   const rect = root.getBoundingClientRect();
   return {
@@ -598,20 +686,12 @@ const zoomAtMiniPoint = (x, y, zoomFactor) => {
   const nextZoom = Math.min(CONFIG.maxZoom, Math.max(CONFIG.minZoom, currentZoom * zoomFactor));
   if (nextZoom === currentZoom) return;
 
-  const clampedX = Math.max(state.renderOffsetX, Math.min(state.renderWidth, x));
-  const clampedY = Math.max(state.renderOffsetY, Math.min(state.renderHeight, y));
+  const clampedX = Math.max(state.renderOffsetX, Math.min(state.renderWidth - state.renderOffsetX, x));
+  const clampedY = Math.max(state.renderOffsetY, Math.min(state.renderHeight - state.renderOffsetY, y));
   const scenePoint = mapMiniToScene(clampedX, clampedY, state.sceneBounds);
   const canvasRect = (container.querySelector(".excalidraw__canvas") || container).getBoundingClientRect();
   const viewportSceneWidth = canvasRect.width / nextZoom;
   const viewportSceneHeight = canvasRect.height / nextZoom;
-
-  const usableWidth = Math.max(1, state.renderWidth - state.renderOffsetX * 2);
-  const usableHeight = Math.max(1, state.renderHeight - state.renderOffsetY * 2);
-  const rx = Math.max(0, Math.min(1, (clampedX - state.renderOffsetX) / usableWidth));
-  const ry = Math.max(0, Math.min(1, (clampedY - state.renderOffsetY) / usableHeight));
-
-  const newViewportMinX = scenePoint.x - rx * viewportSceneWidth;
-  const newViewportMinY = scenePoint.y - ry * viewportSceneHeight;
 
   api.updateScene({
     appState: {
@@ -620,11 +700,87 @@ const zoomAtMiniPoint = (x, y, zoomFactor) => {
         ...appState.zoom,
         value: nextZoom,
       },
-      scrollX: -newViewportMinX,
-      scrollY: -newViewportMinY,
+      scrollX: -(scenePoint.x - viewportSceneWidth / 2),
+      scrollY: -(scenePoint.y - viewportSceneHeight / 2),
     },
     commitToHistory: false,
   });
+};
+
+const animateZoomToElement = (elementBounds) => {
+  if (!elementBounds) return;
+
+  cancelAnimationFrame(state.zoomAnimationFrame);
+
+  const startState = api.getAppState();
+  const startZoom = startState.zoom?.value || 1;
+  const startScrollX = startState.scrollX;
+  const startScrollY = startState.scrollY;
+  const canvasRect = (container.querySelector(".excalidraw__canvas") || container).getBoundingClientRect();
+  const viewportWidth = Math.max(1, canvasRect.width);
+  const viewportHeight = Math.max(1, canvasRect.height);
+  const targetZoom = Math.min(
+    CONFIG.maxZoom,
+    Math.max(
+      CONFIG.minZoom,
+      Math.min(
+        viewportWidth / Math.max(1, elementBounds.sceneWidth),
+        viewportHeight / Math.max(1, elementBounds.sceneHeight)
+      ) * 0.9
+    )
+  );
+
+  const targetViewportSceneWidth = viewportWidth / targetZoom;
+  const targetViewportSceneHeight = viewportHeight / targetZoom;
+  const targetScrollX = -(elementBounds.sceneCenterX - targetViewportSceneWidth / 2);
+  const targetScrollY = -(elementBounds.sceneCenterY - targetViewportSceneHeight / 2);
+
+  const startedAt = performance.now();
+
+  const step = (now) => {
+    const elapsed = now - startedAt;
+    const timeProgress = Math.min(1, elapsed / ZOOM_TRANSITION_DELAY);
+    const stepProgress = Math.min(
+      1,
+      Math.round(ZOOM_TRANSITION_STEP_COUNT * timeProgress) / ZOOM_TRANSITION_STEP_COUNT
+    );
+
+    api.updateScene({
+      appState: {
+        ...api.getAppState(),
+        zoom: {
+          ...api.getAppState().zoom,
+          value: startZoom + (targetZoom - startZoom) * stepProgress,
+        },
+        scrollX: startScrollX + (targetScrollX - startScrollX) * stepProgress,
+        scrollY: startScrollY + (targetScrollY - startScrollY) * stepProgress,
+      },
+      commitToHistory: false,
+    });
+
+    if (elapsed < ZOOM_TRANSITION_DELAY && stepProgress < 1) {
+      state.zoomAnimationFrame = requestAnimationFrame(step);
+      return;
+    }
+
+    api.updateScene({
+      appState: {
+        ...api.getAppState(),
+        zoom: {
+          ...api.getAppState().zoom,
+          value: targetZoom,
+        },
+        scrollX: targetScrollX,
+        scrollY: targetScrollY,
+      },
+      commitToHistory: false,
+    });
+
+    state.zoomAnimationFrame = 0;
+    render();
+  };
+
+  state.zoomAnimationFrame = requestAnimationFrame(step);
 };
 
 const handlePointerDown = (evt) => {
@@ -638,8 +794,13 @@ const handlePointerDown = (evt) => {
   state.draggingViewport = isInViewportRect(point.x, point.y);
 
   if (!state.draggingViewport) {
-    moveViewportByMiniPoint(point.x, point.y);
-    render();
+    const hitElement = getHitElementAtMiniPoint(point.x, point.y);
+    if (hitElement && CONFIG.elementClickAction === "zoom") {
+      animateZoomToElement(hitElement);
+    } else {
+      moveViewportByMiniPoint(point.x, point.y);
+      render();
+    }
     return;
   }
 
