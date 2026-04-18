@@ -34,7 +34,7 @@ const registry = window[GLOBAL_KEY] ||= new WeakMap();
 const existing = registry.get(container);
 if (existing?.cleanup) {
   existing.cleanup();
-  new Notice("当前 Excalidraw 视图的 Minimap 已关闭");
+  new Notice("❌ Excalidraw Minimap 已关闭");
   return;
 }
 
@@ -901,4 +901,4 @@ const cleanup = () => {
 
 registry.set(container, { cleanup, render, root, container, view });
 render();
-new Notice("当前 Excalidraw 视图的 Minimap 已开启，再次运行脚本可关闭");
+new Notice("✅ Excalidraw Minimap 已开启");
