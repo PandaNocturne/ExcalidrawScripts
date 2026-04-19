@@ -6,6 +6,7 @@
 - 点击 minimap：平移主视图到对应位置
 - 拖动 viewport：连续平移主视图
 - 滚轮：缩放主视图
+- 视口框与小地图重叠面积 ≥ 默认 90% 时自动不显示视口框（可在设置中改阈值）
 
 ```javascript
 */
@@ -34,7 +35,7 @@ const registry = window[GLOBAL_KEY] ||= new WeakMap();
 const existing = registry.get(container);
 if (existing?.cleanup) {
   existing.cleanup();
-  new Notice("❌ Excalidraw Minimap 已关闭");
+  // new Notice("❌ Excalidraw Minimap 已关闭");
   return;
 }
 
@@ -58,6 +59,8 @@ const DEFAULT_CONFIG = {
   elementStroke: "rgba(255,255,255,0.24)",
   viewportFill: "rgba(255,165,0,0.16)",
   viewportStroke: "rgba(255,140,0,0.96)",
+  /** 视口框与小地图画布交集面积占比 ≥ 该值时不绘制视口（减轻「已看全图」时的遮挡） */
+  viewportAutoHideCoverage: 0.9,
   throttleMs: 80,
   zoomStep: 1.12,
   minZoom: 0.1,
@@ -76,6 +79,11 @@ const loadSettings = () => {
       : DEFAULT_CONFIG.elementClickAction,
     side: POSITION_STYLES.includes(saved[SETTINGS_KEY]?.side) ? saved[SETTINGS_KEY].side : DEFAULT_CONFIG.side,
     offset: Number(saved[SETTINGS_KEY]?.offset ?? DEFAULT_CONFIG.offset),
+    viewportAutoHideCoverage: (() => {
+      const v = Number(saved[SETTINGS_KEY]?.viewportAutoHideCoverage);
+      if (!Number.isFinite(v)) return DEFAULT_CONFIG.viewportAutoHideCoverage;
+      return Math.min(1, Math.max(0.5, v));
+    })(),
   };
 };
 
@@ -90,6 +98,7 @@ const saveSettings = () => {
     elementClickAction: CONFIG.elementClickAction,
     side: CONFIG.side,
     offset: CONFIG.offset,
+    viewportAutoHideCoverage: CONFIG.viewportAutoHideCoverage,
   };
   ea.setScriptSettings?.(current);
 };
@@ -208,6 +217,7 @@ const openSettingsModal = () => {
     elementClickAction: CONFIG.elementClickAction,
     side: CONFIG.side,
     offset: CONFIG.offset,
+    viewportAutoHideCoverage: CONFIG.viewportAutoHideCoverage,
   };
 
   const draft = {
@@ -217,6 +227,7 @@ const openSettingsModal = () => {
     elementClickAction: CONFIG.elementClickAction,
     side: CONFIG.side,
     offset: String(CONFIG.offset),
+    viewportAutoHideCoverage: String(CONFIG.viewportAutoHideCoverage),
   };
 
   let committed = false;
@@ -231,6 +242,8 @@ const openSettingsModal = () => {
     if (!Number.isFinite(offset) || offset < 0) return false;
     if (!POSITION_STYLES.includes(draft.side)) return false;
     if (!["move", "zoom"].includes(draft.elementClickAction)) return false;
+    const cov = Number(draft.viewportAutoHideCoverage);
+    if (!Number.isFinite(cov) || cov < 0.5 || cov > 1) return false;
 
     CONFIG.width = Math.round(width);
     CONFIG.height = Math.round(height);
@@ -238,6 +251,7 @@ const openSettingsModal = () => {
     CONFIG.elementClickAction = draft.elementClickAction;
     CONFIG.side = draft.side;
     CONFIG.offset = Math.round(offset);
+    CONFIG.viewportAutoHideCoverage = Math.min(1, Math.max(0.5, cov));
 
     if (persist) {
       saveSettings();
@@ -255,6 +269,7 @@ const openSettingsModal = () => {
     CONFIG.elementClickAction = snapshot.elementClickAction;
     CONFIG.side = snapshot.side;
     CONFIG.offset = snapshot.offset;
+    CONFIG.viewportAutoHideCoverage = snapshot.viewportAutoHideCoverage;
     render();
   };
 
@@ -342,6 +357,18 @@ const openSettingsModal = () => {
     });
 
   new ea.obsidian.Setting(modal.contentEl)
+    .setName("视口自动隐藏覆盖率")
+    .setDesc("视口框与小地图画布交集面积占比 ≥ 该值（0.5–1）时不显示视口框，默认 0.9")
+    .addText(text => {
+      text.setPlaceholder("0.9");
+      text.setValue(draft.viewportAutoHideCoverage);
+      text.onChange(value => {
+        draft.viewportAutoHideCoverage = value;
+        applyDraft();
+      });
+    });
+
+  new ea.obsidian.Setting(modal.contentEl)
     .addButton(btn => btn
       .setButtonText("保存")
       .setCta()
@@ -364,6 +391,11 @@ const openSettingsModal = () => {
         }
         if (!POSITION_STYLES.includes(draft.side)) {
           new Notice("位置参数无效");
+          return;
+        }
+        const cov = Number(draft.viewportAutoHideCoverage);
+        if (!Number.isFinite(cov) || cov < 0.5 || cov > 1) {
+          new Notice("视口自动隐藏覆盖率需在 0.5–1 之间");
           return;
         }
 
@@ -466,7 +498,7 @@ root.style.opacity = "0.92";
 
 const settingsButton = document.createElement("button");
 settingsButton.type = "button";
-settingsButton.textContent = "⚙";
+settingsButton.textContent = "⚙️";
 settingsButton.style.position = "absolute";
 settingsButton.style.zIndex = "3";
 settingsButton.style.width = "22px";
@@ -615,11 +647,17 @@ const render = () => {
   const vp2 = mapSceneToMini(viewportBounds.maxX, viewportBounds.maxY, sceneBounds);
   const viewportWidth = Math.max(2, vp2.x - vp1.x);
   const viewportHeight = Math.max(2, vp2.y - vp1.y);
-  const viewportCoversWholeMinimap =
-    vp1.x <= 1 &&
-    vp1.y <= 1 &&
-    vp2.x >= state.renderWidth - 1 &&
-    vp2.y >= state.renderHeight - 1;
+  const miniW = state.renderWidth;
+  const miniH = state.renderHeight;
+  const miniArea = Math.max(1, miniW * miniH);
+  const ix1 = Math.max(0, vp1.x);
+  const iy1 = Math.max(0, vp1.y);
+  const ix2 = Math.min(miniW, vp2.x);
+  const iy2 = Math.min(miniH, vp2.y);
+  const interArea = Math.max(0, ix2 - ix1) * Math.max(0, iy2 - iy1);
+  const coverageRatio = interArea / miniArea;
+  const hideThreshold = Math.min(1, Math.max(0.5, Number(CONFIG.viewportAutoHideCoverage) || 0.9));
+  const viewportCoversWholeMinimap = coverageRatio >= hideThreshold;
 
   if (!viewportCoversWholeMinimap) {
     const viewportRect = createSvgEl("rect", {
@@ -901,4 +939,4 @@ const cleanup = () => {
 
 registry.set(container, { cleanup, render, root, container, view });
 render();
-new Notice("✅ Excalidraw Minimap 已开启");
+// new Notice("✅ Excalidraw Minimap 已开启");
