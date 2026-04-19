@@ -1,18 +1,23 @@
 await ea.addElementsToView();
 const imgs = ea.getViewSelectedElements().filter(el => el.type === "image");
 
-const quickaddApi = this.app.plugins.plugins.quickadd.api;
+const qaPlugin = this.app.plugins.plugins.quickadd;
+if (!qaPlugin?.api?.yesNoPrompt) {
+    new Notice("缺少 QuickAdd：请在「设置 → 社区插件」安装并启用 QuickAdd，本脚本依赖其确认对话框。");
+    return;
+}
+const quickaddApi = qaPlugin.api;
 const isConfirm = await quickaddApi.yesNoPrompt("图片裁剪确认", `确定要裁剪并覆盖本地的 ${imgs.length} 张图片吗？`);
 if (!isConfirm) return;
 
 for (const i of imgs) {
-    const currentPath = ea.plugin.filesMaster.get(i.fileId).path;
-    const file = app.vault.getAbstractFileByPath(currentPath);
-    if (!file) {
-        new Notice("Can't find file: " + currentPath);
-        continue;
-    }
-    const filePath = file.path;
+const currentPath = ea.plugin.filesMaster.get(i.fileId).path;
+const file = app.vault.getAbstractFileByPath(currentPath);
+if (!file) {
+new Notice("Can't find file: " + currentPath);
+continue;
+}
+const filePath = file.path;
 
     // 读取图片为ArrayBuffer
     const arrayBuffer = await app.vault.readBinary(file);
@@ -58,10 +63,10 @@ for (const i of imgs) {
     delete i.crop;
 
     // new Notice("✂️已裁剪图片 " + filePath);
+
 }
 await ea.copyViewElementsToEAforEditing(imgs);
 await ea.addElementsToView(false, false);
 // await ea.getExcalidrawAPI().history.clear(); //避免撤消/重做扰乱
 app.commands.executeCommandById("obsidian-excalidraw-plugin:save");
 new Notice("✅已裁剪所有选中图片");
-
