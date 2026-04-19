@@ -6,7 +6,10 @@
 - 点击 minimap：平移主视图到对应位置
 - 拖动 viewport：连续平移主视图
 - 滚轮：缩放主视图
-- 视口框与小地图重叠面积 ≥ 默认 90% 时自动不显示视口框（可在设置中改阈值）
+- 视口框与小地图重叠面积 ≥ 默认 80% 时自动不显示视口框（可在设置中改阈值）
+- 默认将当前视口并入小地图场景边界：主视图平移到元素区域外时，小地图会缩放以仍完整显示视口框（可在设置中关闭）
+- 「视图内边距」：并入边界时按场景坐标向外扩展视口矩形，小地图四周多留空白（可设为 0）
+- 「视图外边距」：小地图外缘与 Excalidraw 视图容器边缘的留白像素（`CONFIG.offset`）
 
 ```javascript
 */
@@ -60,7 +63,11 @@ const DEFAULT_CONFIG = {
   viewportFill: "rgba(255,165,0,0.16)",
   viewportStroke: "rgba(255,140,0,0.96)",
   /** 视口框与小地图画布交集面积占比 ≥ 该值时不绘制视口（减轻「已看全图」时的遮挡） */
-  viewportAutoHideCoverage: 0.9,
+  viewportAutoHideCoverage: 0.8,
+  /** 为 true 时，场景边界 = 元素边界 ∪ 当前视口，视角移到内容外时小地图仍包住视口框 */
+  includeViewportInBounds: true,
+  /** 视口并入场景边界时，在场景坐标系下向四周扩展的边距（与元素 x/y 同单位） */
+  viewportInsetPadding: 48,
   throttleMs: 80,
   zoomStep: 1.12,
   minZoom: 0.1,
@@ -84,6 +91,13 @@ const loadSettings = () => {
       if (!Number.isFinite(v)) return DEFAULT_CONFIG.viewportAutoHideCoverage;
       return Math.min(1, Math.max(0.5, v));
     })(),
+    includeViewportInBounds:
+      saved[SETTINGS_KEY]?.includeViewportInBounds ?? DEFAULT_CONFIG.includeViewportInBounds,
+    viewportInsetPadding: (() => {
+      const v = Number(saved[SETTINGS_KEY]?.viewportInsetPadding);
+      if (!Number.isFinite(v)) return DEFAULT_CONFIG.viewportInsetPadding;
+      return Math.min(5000, Math.max(0, Math.round(v)));
+    })(),
   };
 };
 
@@ -99,6 +113,8 @@ const saveSettings = () => {
     side: CONFIG.side,
     offset: CONFIG.offset,
     viewportAutoHideCoverage: CONFIG.viewportAutoHideCoverage,
+    includeViewportInBounds: CONFIG.includeViewportInBounds,
+    viewportInsetPadding: CONFIG.viewportInsetPadding,
   };
   ea.setScriptSettings?.(current);
 };
@@ -207,7 +223,7 @@ const refreshRootSize = () => {
 
 const openSettingsModal = () => {
   const modal = new ea.obsidian.Modal(app);
-  modal.titleEl.setText("Minimap 设置");
+  modal.titleEl.setText("🗺️ Excalidraw Minimap 设置");
   modal.modalEl.style.zIndex = "1000";
 
   const snapshot = {
@@ -218,6 +234,8 @@ const openSettingsModal = () => {
     side: CONFIG.side,
     offset: CONFIG.offset,
     viewportAutoHideCoverage: CONFIG.viewportAutoHideCoverage,
+    includeViewportInBounds: CONFIG.includeViewportInBounds,
+    viewportInsetPadding: CONFIG.viewportInsetPadding,
   };
 
   const draft = {
@@ -228,6 +246,8 @@ const openSettingsModal = () => {
     side: CONFIG.side,
     offset: String(CONFIG.offset),
     viewportAutoHideCoverage: String(CONFIG.viewportAutoHideCoverage),
+    includeViewportInBounds: CONFIG.includeViewportInBounds,
+    viewportInsetPadding: String(CONFIG.viewportInsetPadding),
   };
 
   let committed = false;
@@ -244,6 +264,8 @@ const openSettingsModal = () => {
     if (!["move", "zoom"].includes(draft.elementClickAction)) return false;
     const cov = Number(draft.viewportAutoHideCoverage);
     if (!Number.isFinite(cov) || cov < 0.5 || cov > 1) return false;
+    const vpInset = Number(draft.viewportInsetPadding);
+    if (!Number.isFinite(vpInset) || vpInset < 0 || vpInset > 5000) return false;
 
     CONFIG.width = Math.round(width);
     CONFIG.height = Math.round(height);
@@ -252,6 +274,8 @@ const openSettingsModal = () => {
     CONFIG.side = draft.side;
     CONFIG.offset = Math.round(offset);
     CONFIG.viewportAutoHideCoverage = Math.min(1, Math.max(0.5, cov));
+    CONFIG.includeViewportInBounds = draft.includeViewportInBounds;
+    CONFIG.viewportInsetPadding = Math.round(vpInset);
 
     if (persist) {
       saveSettings();
@@ -270,6 +294,8 @@ const openSettingsModal = () => {
     CONFIG.side = snapshot.side;
     CONFIG.offset = snapshot.offset;
     CONFIG.viewportAutoHideCoverage = snapshot.viewportAutoHideCoverage;
+    CONFIG.includeViewportInBounds = snapshot.includeViewportInBounds;
+    CONFIG.viewportInsetPadding = snapshot.viewportInsetPadding;
     render();
   };
 
@@ -280,8 +306,8 @@ const openSettingsModal = () => {
   };
 
   new ea.obsidian.Setting(modal.contentEl)
-    .setName("宽度上限")
-    .setDesc("minimap 最大宽度")
+    .setName("📐 宽度上限")
+    .setDesc("minimap 最大宽度（px）")
     .addText(text => {
       text.setPlaceholder("320");
       text.setValue(draft.width);
@@ -292,8 +318,8 @@ const openSettingsModal = () => {
     });
 
   new ea.obsidian.Setting(modal.contentEl)
-    .setName("高度上限")
-    .setDesc("minimap 最大高度")
+    .setName("📏 高度上限")
+    .setDesc("minimap 最大高度（px）")
     .addText(text => {
       text.setPlaceholder("200");
       text.setValue(draft.height);
@@ -304,7 +330,7 @@ const openSettingsModal = () => {
     });
 
   new ea.obsidian.Setting(modal.contentEl)
-    .setName("自适应 minimap 尺寸上限")
+    .setName("🔳 自适应 minimap 尺寸上限")
     .setDesc("按内容比例在最大宽高内自动调整 minimap 实际尺寸")
     .addToggle(toggle => {
       toggle.setValue(draft.adaptiveSize);
@@ -315,14 +341,14 @@ const openSettingsModal = () => {
     });
 
   new ea.obsidian.Setting(modal.contentEl)
-    .setName("位置")
-    .setDesc("左上、右上、右下、左下")
+    .setName("📍 位置")
+    .setDesc("小地图在画布上的角落：左上、右上、右下、左下")
     .addDropdown(dropdown => {
       dropdown
-        .addOption("top-left", "左上")
-        .addOption("top-right", "右上")
-        .addOption("bottom-right", "右下")
-        .addOption("bottom-left", "左下")
+        .addOption("top-left", "↖️ 左上")
+        .addOption("bottom-left", "↙️ 左下")
+        .addOption("top-right", "↗️ 右上")
+        .addOption("bottom-right", "↘️ 右下")
         .setValue(draft.side)
         .onChange(value => {
           draft.side = value;
@@ -331,8 +357,8 @@ const openSettingsModal = () => {
     });
 
   new ea.obsidian.Setting(modal.contentEl)
-    .setName("页边距")
-    .setDesc("距离边缘的像素")
+    .setName("📤 视图外边距")
+    .setDesc("小地图外缘与 Excalidraw 视图容器边缘之间的留白（px）")
     .addText(text => {
       text.setPlaceholder("12");
       text.setValue(draft.offset);
@@ -343,12 +369,35 @@ const openSettingsModal = () => {
     });
 
   new ea.obsidian.Setting(modal.contentEl)
-    .setName("元素点击事件")
+    .setName("📥 视图内边距")
+    .setDesc("仅在「视口并入场景边界」开启时生效：场景坐标下向四周扩展视口后再算并集，0–5000，默认 48")
+    .addText(text => {
+      text.setPlaceholder("48");
+      text.setValue(draft.viewportInsetPadding);
+      text.onChange(value => {
+        draft.viewportInsetPadding = value;
+        applyDraft();
+      });
+    });
+
+  new ea.obsidian.Setting(modal.contentEl)
+    .setName("🧭 视口并入场景边界")
+    .setDesc("开启后，主视图移到元素区域外时，小地图会扩大场景框以仍完整显示视口框（默认开启）")
+    .addToggle(toggle => {
+      toggle.setValue(draft.includeViewportInBounds);
+      toggle.onChange(value => {
+        draft.includeViewportInBounds = value;
+        applyDraft();
+      });
+    });
+
+  new ea.obsidian.Setting(modal.contentEl)
+    .setName("🖱️ 元素点击事件")
     .setDesc("点击 minimap 中元素区域时，执行移动或缩放")
     .addDropdown(dropdown => {
       dropdown
-        .addOption("move", "移动")
-        .addOption("zoom", "缩放")
+        .addOption("move", "↔️ 移动")
+        .addOption("zoom", "🔍 缩放")
         .setValue(draft.elementClickAction)
         .onChange(value => {
           draft.elementClickAction = value;
@@ -357,7 +406,7 @@ const openSettingsModal = () => {
     });
 
   new ea.obsidian.Setting(modal.contentEl)
-    .setName("视口自动隐藏覆盖率")
+    .setName("🙈 视口自动隐藏覆盖率")
     .setDesc("视口框与小地图画布交集面积占比 ≥ 该值（0.5–1）时不显示视口框，默认 0.9")
     .addText(text => {
       text.setPlaceholder("0.9");
@@ -370,7 +419,7 @@ const openSettingsModal = () => {
 
   new ea.obsidian.Setting(modal.contentEl)
     .addButton(btn => btn
-      .setButtonText("保存")
+      .setButtonText("💾 保存")
       .setCta()
       .onClick(() => {
         const width = Number(draft.width);
@@ -378,24 +427,29 @@ const openSettingsModal = () => {
         const offset = Number(draft.offset);
 
         if (!Number.isFinite(width) || width < 80) {
-          new Notice("宽度至少为 80");
+          new Notice("📐 宽度至少为 80");
           return;
         }
         if (!Number.isFinite(height) || height < 60) {
-          new Notice("高度至少为 60");
+          new Notice("📏 高度至少为 60");
           return;
         }
         if (!Number.isFinite(offset) || offset < 0) {
-          new Notice("页边距不能小于 0");
+          new Notice("📤 视图外边距不能小于 0");
           return;
         }
         if (!POSITION_STYLES.includes(draft.side)) {
-          new Notice("位置参数无效");
+          new Notice("📍 位置参数无效");
           return;
         }
         const cov = Number(draft.viewportAutoHideCoverage);
         if (!Number.isFinite(cov) || cov < 0.5 || cov > 1) {
-          new Notice("视口自动隐藏覆盖率需在 0.5–1 之间");
+          new Notice("🙈 视口自动隐藏覆盖率需在 0.5–1 之间");
+          return;
+        }
+        const vpInset = Number(draft.viewportInsetPadding);
+        if (!Number.isFinite(vpInset) || vpInset < 0 || vpInset > 5000) {
+          new Notice("📥 视图内边距需在 0–5000 之间");
           return;
         }
 
@@ -403,7 +457,7 @@ const openSettingsModal = () => {
         modal.close();
       }))
     .addButton(btn => btn
-      .setButtonText("取消")
+      .setButtonText("↩️ 取消")
       .onClick(() => modal.close()));
 
   modal.open();
@@ -466,6 +520,37 @@ const getViewportBounds = () => {
     maxY: minY + height,
     width,
     height,
+  };
+};
+
+const mergeBounds = (a, b) => {
+  const minX = Math.min(a.minX, b.minX);
+  const minY = Math.min(a.minY, b.minY);
+  const maxX = Math.max(a.maxX, b.maxX);
+  const maxY = Math.max(a.maxY, b.maxY);
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
+  };
+};
+
+const expandBounds = (b, pad) => {
+  const p = Math.max(0, pad);
+  const minX = b.minX - p;
+  const minY = b.minY - p;
+  const maxX = b.maxX + p;
+  const maxY = b.maxY + p;
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
   };
 };
 
@@ -589,8 +674,16 @@ const render = () => {
   state.lastRenderAt = now;
 
   const elements = getRenderableElements();
-  const sceneBounds = getSceneBounds(elements);
   const viewportBounds = getViewportBounds();
+  const vpInset = Math.max(0, Math.min(5000, Number(CONFIG.viewportInsetPadding) || 0));
+  const viewportForMerge =
+    CONFIG.includeViewportInBounds && vpInset > 0
+      ? expandBounds(viewportBounds, vpInset)
+      : viewportBounds;
+  const elementBounds = getSceneBounds(elements);
+  const sceneBounds = CONFIG.includeViewportInBounds
+    ? mergeBounds(elementBounds, viewportForMerge)
+    : elementBounds;
   const metrics = computeRenderMetrics(sceneBounds);
 
   state.renderWidth = metrics.width;
