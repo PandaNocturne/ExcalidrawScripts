@@ -622,12 +622,18 @@ const addNewFrameToCanvas = async (name, insertToDataCallback) => {
   };
 
   insertToDataCallback(id);
-  applyAutoNumbering();
-  api.updateScene({ elements: [...api.getSceneElements(), { ...newFrame, name: treeData.find((item) => item.id === id)?.name || name }], commitToHistory: true });
+  const numberingChanged = applyAutoNumbering();
+  const finalName = treeData.find((item) => item.id === id)?.name || name;
+
+  api.updateScene({ elements: [...api.getSceneElements(), { ...newFrame, name: finalName }], commitToHistory: true });
 
   setTimeout(async () => {
     await syncToCanvas();
-    render(id);
+    if (numberingChanged) {
+      scheduleNumberingRefresh({ focusedId: id });
+    } else {
+      render(id);
+    }
   }, 100);
 };
 
@@ -650,7 +656,7 @@ const deleteFramesFromCanvas = async (idsToDeleteSet) => {
   api.updateScene({ elements: updated, commitToHistory: true });
   setTimeout(async () => {
     await syncToCanvas();
-    render();
+    scheduleNumberingRefresh({ reinit: true });
   }, 100);
 };
 
