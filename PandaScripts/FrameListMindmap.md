@@ -1,9 +1,9 @@
 /*
-## Frame 导图大纲 (完美拐角 + 智能编号 + 高级编辑与双链提取)
+## Frame 导图大纲 (完美拐角 + 智能编号 + 高级编辑)
 - 样式更新：全自动生成原生 Elbow 拐角连线，强制锁定左右边缘锚点。
-- 节点操作：支持节点同步删除，双击大纲跳转画布。
-- 核心逻辑：智能层级编号 (01, 02...)。
-- 新增更新：接入高级文本编辑器，支持“修改”并覆盖，或“复制”一键提取带当前文件名的锚点双链。
+- 节点操作：支持节点同步删除，双击大纲聚焦当前节点及其子树。
+- 核心逻辑：智能层级编号 (01, 02...)，列表更新时自动重编号并同步到画布。
+- 新增更新：接入高级文本编辑器，仅支持“修改”并覆盖。
 */
 
 const api = ea.getExcalidrawAPI();
@@ -305,6 +305,8 @@ const state = {
   unsub: null,
   renderTimer: 0,
   settingsOpen: false,
+  numberingTimer: 0,
+  numberingInFlight: false,
 };
 
 const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
@@ -314,6 +316,72 @@ const getBranchCount = (index, data) => {
   return count;
 };
 const hasChildren = (index, data) => index + 1 < data.length && data[index + 1].depth > data[index].depth;
+
+const applyAutoNumbering = () => {
+  let counters = [];
+  let changed = false;
+
+  treeData.forEach((item) => {
+    const d = item.depth;
+    counters.splice(d + 1);
+    counters[d] = (counters[d] || 0) + 1;
+
+    const numStr = String(counters[d]).padStart(2, '0');
+    const cleanName = item.name.replace(/^\d{2}\s+/, '');
+    const newName = `${numStr} ${cleanName}`;
+    if (item.name !== newName) {
+      item.name = newName;
+      changed = true;
+    }
+  });
+
+  return changed;
+};
+
+const syncTreeDataToSceneNames = () => {
+  const nameMap = new Map(treeData.map((item) => [item.id, item.name]));
+  const sceneElements = api.getSceneElements();
+  let changed = false;
+  const updated = sceneElements.map((el) => {
+    const nextName = nameMap.get(el.id);
+    if (typeof nextName === "string" && el.name !== nextName) {
+      changed = true;
+      return { ...el, name: nextName };
+    }
+    return el;
+  });
+
+  if (!changed) return false;
+  api.updateScene({ elements: updated, commitToHistory: true });
+  return true;
+};
+
+const flushNumbering = ({ reinit = false, focusedId = null } = {}) => {
+  if (state.numberingInFlight) return;
+  state.numberingInFlight = true;
+  state.suppressChange = true;
+
+  try {
+    if (reinit) treeData = initTreeData();
+    const numberingChanged = applyAutoNumbering();
+    const sceneChanged = syncTreeDataToSceneNames();
+    if (numberingChanged || sceneChanged || reinit) {
+      render(focusedId);
+    }
+  } finally {
+    setTimeout(() => {
+      state.suppressChange = false;
+      state.numberingInFlight = false;
+    }, 300);
+  }
+};
+
+const scheduleNumberingRefresh = ({ delay = 120, reinit = false, focusedId = null } = {}) => {
+  clearTimeout(state.numberingTimer);
+  state.numberingTimer = setTimeout(() => {
+    flushNumbering({ reinit, focusedId });
+  }, delay);
+};
 
 const createIconButton = (text, title, onClick) => {
   const btn = document.createElement("div");
@@ -457,38 +525,7 @@ verticalGapInput.onchange = applySettingsFromInputs;
 // [一键编号]
 const numberBtn = createIconButton("🔢", "自动编号", (e) => {
   e.stopPropagation();
-  let counters = [];
-  const updates = [];
-
-  treeData.forEach((item) => {
-    const d = item.depth;
-    counters.splice(d + 1);
-    counters[d] = (counters[d] || 0) + 1;
-
-    const numStr = String(counters[d]).padStart(2, '0');
-    const cleanName = item.name.replace(/^\d{2}\s+/, '');
-    const newName = `${numStr} ${cleanName}`;
-
-    if (item.name !== newName) {
-      item.name = newName;
-      updates.push({ id: item.id, name: newName });
-    }
-  });
-
-  if (updates.length > 0) {
-    state.suppressChange = true;
-    const sceneElements = api.getSceneElements();
-    const updatedScene = sceneElements.map((el) => {
-      const u = updates.find((x) => x.id === el.id);
-      return u ? { ...el, name: u.name } : el;
-    });
-
-    api.updateScene({ elements: updatedScene, commitToHistory: true });
-    setTimeout(() => {
-      state.suppressChange = false;
-      render();
-    }, 300);
-  }
+  flushNumbering();
 });
 
 const refreshBtn = createIconButton("🔄️", "刷新并重排", async (e) => {
@@ -583,9 +620,12 @@ const addNewFrameToCanvas = async (name, insertToDataCallback) => {
     versionNonce: Math.random(),
     isDeleted: false,
   };
-  api.updateScene({ elements: [...api.getSceneElements(), newFrame], commitToHistory: true });
+
+  insertToDataCallback(id);
+  applyAutoNumbering();
+  api.updateScene({ elements: [...api.getSceneElements(), { ...newFrame, name: treeData.find((item) => item.id === id)?.name || name }], commitToHistory: true });
+
   setTimeout(async () => {
-    insertToDataCallback(id);
     await syncToCanvas();
     render(id);
   }, 100);
@@ -824,7 +864,7 @@ const render = (focusedId = null) => {
         }
         if (changed) {
           await syncToCanvas();
-          render(item.id);
+          scheduleNumberingRefresh({ focusedId: item.id });
         }
       }
     };
@@ -913,6 +953,7 @@ scrollWrapper.ondrop = async (e) => {
   e.preventDefault();
   dropIndicator.style.display = "none";
   if (state.targetIndex !== -1 && state.draggingId) {
+    const focusedId = state.draggingId;
     if (state.prevVisibleDataIndex >= 0 && state.targetDepth > treeData[state.prevVisibleDataIndex].depth) {
       treeData[state.prevVisibleDataIndex].collapsed = false;
     }
@@ -928,7 +969,7 @@ scrollWrapper.ondrop = async (e) => {
 
     treeData.splice(actualInsertIndex, 0, ...branch);
     await syncToCanvas();
-    render(state.draggingId);
+    scheduleNumberingRefresh({ focusedId });
   }
   state.draggingId = null;
   state.targetIndex = -1;
@@ -938,8 +979,7 @@ state.unsub = api.onChange(() => {
   if (state.suppressChange || state.draggingId) return;
   clearTimeout(state.renderTimer);
   state.renderTimer = setTimeout(() => {
-    treeData = initTreeData();
-    render();
+    scheduleNumberingRefresh({ reinit: true });
   }, 500);
 });
 
