@@ -170,25 +170,35 @@ const syncToCanvas = async () => {
     if (frame) setPositions(root, frame.x, frame.y + frame.height / 2);
   });
 
-  // 5. 【核心】创建新连线，并应用你的自定义样式
+  // 5. 【核心】先创建绑定箭头，再对新箭头二次覆写样式，避免 connectObjects 忽略部分配置
+  const arrowStyle = {
+    // strokeColor: "#808080",
+    strokeWidth: 4,
+    strokeStyle: "solid",
+    fillStyle: "solid",
+    roughness: 0,
+    roundness: { type: 2 },
+    startArrowhead: null,
+    endArrowhead: "arrow"
+  };
+  Object.assign(ea.style, arrowStyle);
+  const elementIdsBeforeConnect = new Set(Object.keys(ea.elementsDict));
+
   arrowsToCreate.forEach(arr => {
     ea.connectObjects(
-      arr.parent, 
-      "right", // 从父节点右侧接出
-      arr.child, 
-      "left",  // 接入子节点左侧
-      {
-        type: "arrow",
-        strokeColor: "#808080",      // 连线颜色
-        strokeWidth: 4,              // 加粗连线
-        strokeStyle: "solid",        // 实线样式
-        fillStyle: "hachure",        // 填充样式
-        roughness: 0,                // 0为直线无手绘抖动，如需手绘感可调为 1 或 2
-        roundness: { type: 3 },      // 原生 Elbow (拐角) 线条
-        startArrowhead: null,        // 起点无箭头
-        endArrowhead: "arrow"        // 终点标准箭头
-      }
+      arr.parent,
+      "right",
+      arr.child,
+      "left",
+      { type: "arrow", ...arrowStyle }
     );
+  });
+
+  const newArrowIds = Object.keys(ea.elementsDict).filter(id => !elementIdsBeforeConnect.has(id));
+  newArrowIds.forEach(id => {
+    const el = ea.elementsDict[id];
+    if (el?.type !== "arrow") return;
+    Object.assign(el, arrowStyle);
   });
 
   await ea.addElementsToView(false, false);
