@@ -1,7 +1,8 @@
 /*
-## Frame 导图大纲 (加粗线条 + 原生完美拐角 + 边缘锁定版)
+## Frame 导图大纲 (加粗线条 + 原生完美拐角 + 边缘锁定版 + 同步删除连线)
 - 样式更新：线条加粗 (strokeWidth: 4)，实线样式，填充样式。
-- 核心：使用 ea.connectObjects 解决连线脱落问题，全自动生成原生 Elbow 拐角连线，并强制锁定左右边缘锚点，彻底解决布局乱飞。
+- 核心：使用 ea.connectObjects 解决连线脱落问题，全自动生成原生 Elbow 拐角连线，并强制锁定左右边缘锚点。
+- 更新：删除节点时，自动清理相连的孤立连线。
 */
 
 const api = ea.getExcalidrawAPI();
@@ -521,13 +522,28 @@ const addNewFrameToCanvas = async (name, insertToDataCallback) => {
   }, 100);
 };
 
+// =====================================================================
+// [已更新]: 删除节点时，连带删除两端绑定的箭头
+// =====================================================================
 const deleteFramesFromCanvas = async (idsToDeleteSet) => {
   state.suppressChange = true;
   const sceneElements = api.getSceneElements();
   const updated = sceneElements.map((el) => {
-    if (idsToDeleteSet.has(el.id) || idsToDeleteSet.has(el.frameId)) return { ...el, isDeleted: true };
+    // 1. 判断是不是要删除的 Frame 或者 Frame 内部的元素
+    const isTargetFrameOrInner = idsToDeleteSet.has(el.id) || idsToDeleteSet.has(el.frameId);
+
+    // 2. 判断是不是箭头，并且箭头的起点或终点连在这个被删的 Frame 上
+    const isConnectedArrow = el.type === "arrow" && (
+      idsToDeleteSet.has(el.startBinding?.elementId) ||
+      idsToDeleteSet.has(el.endBinding?.elementId)
+    );
+
+    if (isTargetFrameOrInner || isConnectedArrow) {
+      return { ...el, isDeleted: true };
+    }
     return el;
   });
+
   api.updateScene({ elements: updated, commitToHistory: true });
   setTimeout(async () => {
     await syncToCanvas();
