@@ -872,19 +872,19 @@ const render = (focusedId = null) => {
       })
     );
 
-    actions.appendChild(
-      createBtn("⎘", "向下复制当前节点", async () => {
-        await duplicateBranchToCanvas(index, { includeChildren: false });
-      })
-    );
-
-    actions.appendChild(
-      createBtn("⧉", "向下复制当前+子项", async () => {
-        await duplicateBranchToCanvas(index, { includeChildren: true });
-      })
-    );
-
     if (item.depth > 0) {
+      actions.appendChild(
+        createBtn("⎘", "向下复制当前节点", async () => {
+          await duplicateBranchToCanvas(index, { includeChildren: false });
+        })
+      );
+
+      actions.appendChild(
+        createBtn("⧉", "向下复制当前+子项", async () => {
+          await duplicateBranchToCanvas(index, { includeChildren: true });
+        })
+      );
+
       actions.appendChild(
         createBtn("+", "添加同级", () => {
           addNewFrameToCanvas("新建节点", (newId) => {
