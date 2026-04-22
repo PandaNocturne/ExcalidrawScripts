@@ -1,9 +1,9 @@
 /*
-## Frame 导图大纲 (加粗线条 + 完美拐角版 + 边缘锁定 + 智能编号)
+## Frame 导图大纲 (完美拐角 + 智能编号 + 高级编辑与双链提取)
 - 样式更新：全自动生成原生 Elbow 拐角连线，强制锁定左右边缘锚点。
-- 节点操作：支持节点同步删除，支持点击编辑标题，双击大纲跳转画布。
-- 细节调整：去除了头部的新建一级节点按钮，一级列表去除了添加同级按钮。
-- 新增功能：一键智能编号 (一级 01, 02... 二级 01, 02...)。
+- 节点操作：支持节点同步删除，双击大纲跳转画布。
+- 核心逻辑：智能层级编号 (01, 02...)。
+- 新增更新：接入高级文本编辑器，支持“修改”并覆盖，或“复制”一键提取带当前文件名的锚点双链。
 */
 
 const api = ea.getExcalidrawAPI();
@@ -105,6 +105,37 @@ const initTreeData = () => {
 };
 
 let treeData = initTreeData();
+
+// =====================================================================
+// [新增] 文本编辑器函数 (集成 QuickAdd Utils)
+// =====================================================================
+async function openEditPrompt(ocrText, n = 10) {
+  // 兜底检查：如果没有定义 utils，平滑降级为原生弹窗
+  if (typeof utils === "undefined") {
+    new Notice("提示: 未检测到 QuickAdd utils，使用基础输入框", 2000);
+    const res = window.prompt("请输入新的节点名称", ocrText);
+    if (res === null) return { confirmed: false, ocrTextEdit: ocrText };
+    return { confirmed: true, ocrTextEdit: res };
+  }
+
+  const ocrTextEdit = await utils.inputPrompt(
+    "编辑文本",
+    "仅修改 Frame 标题",
+    ocrText,
+    undefined,
+    n,
+    true
+  );
+
+  if (ocrTextEdit === null || typeof ocrTextEdit === "undefined") {
+    return { confirmed: false, ocrTextEdit: ocrText };
+  }
+
+  return {
+    confirmed: true,
+    ocrTextEdit: ocrTextEdit === " " ? "" : ocrTextEdit,
+  };
+}
 
 // =====================================================================
 // === 2. 核心排版引擎 (自动绑定 + 拐角连线 + 自定义线条样式) ===
@@ -423,7 +454,7 @@ const applySettingsFromInputs = async () => {
 horizontalGapInput.onchange = applySettingsFromInputs;
 verticalGapInput.onchange = applySettingsFromInputs;
 
-// [新增] 一键编号按钮
+// [一键编号]
 const numberBtn = createIconButton("🔢", "自动编号", (e) => {
   e.stopPropagation();
   let counters = [];
@@ -431,14 +462,10 @@ const numberBtn = createIconButton("🔢", "自动编号", (e) => {
 
   treeData.forEach((item) => {
     const d = item.depth;
-    // 截断深层计数器，确保子级重新从 1 开始
     counters.splice(d + 1);
     counters[d] = (counters[d] || 0) + 1;
 
-    // 生成两位数编号，如 01, 02
     const numStr = String(counters[d]).padStart(2, '0');
-
-    // 清理可能已经存在的 "数字+空格" 编号，防止叠加 (如 "01 01 节点")
     const cleanName = item.name.replace(/^\d{2}\s+/, '');
     const newName = `${numStr} ${cleanName}`;
 
@@ -478,7 +505,6 @@ const settingsBtn = createIconButton("⚙️", "布局设置", (e) => {
   if (state.settingsOpen) syncSettingsInputs();
 });
 
-// 添加到头部，去除了新建节点按钮
 headerActions.appendChild(numberBtn);
 headerActions.appendChild(settingsBtn);
 headerActions.appendChild(refreshBtn);
@@ -698,27 +724,29 @@ const render = (focusedId = null) => {
       return btn;
     };
 
+    // [更新] 编辑 Frame 标题，仅支持确认或取消
     actions.appendChild(
-      createBtn("✎", "修改标题", () => {
-        const newTitle = window.prompt("请输入新的节点名称", item.name);
-        if (newTitle !== null && newTitle.trim() !== "") {
-          const finalName = newTitle.trim();
-          item.name = finalName;
+      createBtn("✎", "修改标题", async () => {
+        const exText = item.name;
+        const { confirmed, ocrTextEdit } = await openEditPrompt(exText, 1);
+        if (!confirmed) return;
 
-          state.suppressChange = true;
-          const sceneElements = api.getSceneElements();
-          const updated = sceneElements.map((el) => {
-            if (el.id === item.id) return { ...el, name: finalName };
-            return el;
-          });
-          api.updateScene({ elements: updated, commitToHistory: true });
-          render(item.id);
-          setTimeout(() => state.suppressChange = false, 300);
-        }
+        const finalName = ocrTextEdit;
+
+        state.suppressChange = true;
+        const sceneElements = api.getSceneElements();
+        const updated = sceneElements.map((el) => {
+          if (el.id === item.id) return { ...el, name: finalName };
+          return el;
+        });
+        api.updateScene({ elements: updated, commitToHistory: true });
+
+        treeData = initTreeData();
+        render(item.id);
+        setTimeout(() => state.suppressChange = false, 300);
       })
     );
 
-    // [更新] 一级列表不需要+按钮，只在 depth > 0 时渲染
     if (item.depth > 0) {
       actions.appendChild(
         createBtn("+", "添加同级", () => {
