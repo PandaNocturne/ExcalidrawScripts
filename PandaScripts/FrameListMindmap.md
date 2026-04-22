@@ -259,15 +259,15 @@ const syncToCanvas = async () => {
 
   await ea.addElementsToView(false, false);
 
-  const sceneElementsAfterLayout = api.getSceneElements();
-  const updatedSceneElements = sceneElementsAfterLayout.map((el) => {
-    if (!newArrowIds.includes(el.id) || el.type !== "arrow") return el;
-    return {
-      ...el,
-      ...arrowStyle,
-      elbowed: true,
-    };
-  });
+  // const sceneElementsAfterLayout = api.getSceneElements();
+  // const updatedSceneElements = sceneElementsAfterLayout.map((el) => {
+  //   if (!newArrowIds.includes(el.id) || el.type !== "arrow") return el;
+  //   return {
+  //     ...el,
+  //     ...arrowStyle,
+  //     elbowed: true,
+  //   };
+  // });
   api.updateScene({ elements: updatedSceneElements, commitToHistory: false });
 
   setTimeout(() => {
