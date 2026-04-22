@@ -1,7 +1,7 @@
 /*
-## Frame 导图大纲 (加粗线条 + 完美粘性连线 + 原生拐角版)
+## Frame 导图大纲 (加粗线条 + 原生完美拐角 + 边缘锁定版)
 - 样式更新：线条加粗 (strokeWidth: 4)，实线样式，填充样式。
-- 核心：使用 ea.connectObjects 解决连线脱落问题，全自动生成 Elbow 拐角连线。
+- 核心：使用 ea.connectObjects 解决连线脱落问题，全自动生成原生 Elbow 拐角连线，并强制锁定左右边缘锚点，彻底解决布局乱飞。
 */
 
 const api = ea.getExcalidrawAPI();
@@ -103,22 +103,6 @@ const initTreeData = () => {
 };
 
 let treeData = initTreeData();
-
-const setArrowControlPoints = (arrow) => {
-  const endPoint = arrow.points?.[arrow.points.length - 1];
-  if (!endPoint) return;
-
-  const endX = endPoint[0];
-  const endY = endPoint[1];
-  const midX = Math.max(24, endX / 2);
-
-  arrow.points = [
-    [0, 0],
-    [midX, 0],
-    [midX, endY],
-    [endX, endY],
-  ];
-};
 
 // =====================================================================
 // === 2. 核心排版引擎 (自动绑定 + 拐角连线 + 自定义线条样式) ===
@@ -237,9 +221,10 @@ const syncToCanvas = async () => {
     strokeStyle: "solid",
     fillStyle: "solid",
     roughness: 0,
-    roundness: null,
+    roundness: { type: 2 }, // Excalidraw 原生平滑拐角
     startArrowhead: null,
     endArrowhead: "arrow",
+    elbowed: true,          // 开启原生拐角模式
   };
 
   Object.assign(ea.style, arrowStyle);
@@ -254,21 +239,19 @@ const syncToCanvas = async () => {
     const el = ea.elementsDict[id];
     if (el?.type !== "arrow") return;
     Object.assign(el, arrowStyle);
-    setArrowControlPoints(el);
+
+    // 强制绑定连接锚点到边缘，避免中心连接导致布局和连线混乱
+    if (el.startBinding) {
+      el.startBinding.fixedPoint = [1, 0.5]; // 1代表最右侧边缘，0.5代表垂直居中
+      delete el.startBinding.focus;          // 删除悬浮焦点
+    }
+    if (el.endBinding) {
+      el.endBinding.fixedPoint = [0, 0.5];   // 0代表最左侧边缘，0.5代表垂直居中
+      delete el.endBinding.focus;
+    }
   });
 
   await ea.addElementsToView(false, false);
-
-  // const sceneElementsAfterLayout = api.getSceneElements();
-  // const updatedSceneElements = sceneElementsAfterLayout.map((el) => {
-  //   if (!newArrowIds.includes(el.id) || el.type !== "arrow") return el;
-  //   return {
-  //     ...el,
-  //     ...arrowStyle,
-  //     elbowed: true,
-  //   };
-  // });
-  api.updateScene({ elements: updatedSceneElements, commitToHistory: false });
 
   setTimeout(() => {
     state.suppressChange = false;
