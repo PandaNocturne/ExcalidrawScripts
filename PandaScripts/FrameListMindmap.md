@@ -137,6 +137,85 @@ async function openEditPrompt(ocrText, n = 10) {
   };
 }
 
+const getBranchItems = (index, data = treeData) => data.slice(index, index + getBranchCount(index, data));
+
+const createCloneId = (prefix = "item") => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+const cloneSceneElement = (element, elementIdMap, frameIdMap, groupIdMap) => {
+  const cloned = JSON.parse(JSON.stringify(element));
+  cloned.id = elementIdMap.get(element.id) || createCloneId(element.type || "el");
+  cloned.isDeleted = false;
+  cloned.version = 1;
+  cloned.versionNonce = Math.floor(Math.random() * 1_000_000_000);
+
+  if (typeof cloned.seed === "number") {
+    cloned.seed = Math.floor(Math.random() * 1_000_000_000);
+  }
+  if (typeof cloned.frameId === "string" && frameIdMap.has(cloned.frameId)) {
+    cloned.frameId = frameIdMap.get(cloned.frameId);
+  }
+  if (Array.isArray(cloned.groupIds)) {
+    cloned.groupIds = cloned.groupIds.map((id) => groupIdMap.get(id) || id);
+  }
+  if (Array.isArray(cloned.boundElements)) {
+    cloned.boundElements = cloned.boundElements
+      .map((binding) => elementIdMap.has(binding.id) ? { ...binding, id: elementIdMap.get(binding.id) } : null)
+      .filter(Boolean);
+  }
+  if (typeof cloned.containerId === "string" && elementIdMap.has(cloned.containerId)) {
+    cloned.containerId = elementIdMap.get(cloned.containerId);
+  }
+  if (cloned.startBinding?.elementId && elementIdMap.has(cloned.startBinding.elementId)) {
+    cloned.startBinding.elementId = elementIdMap.get(cloned.startBinding.elementId);
+  }
+  if (cloned.endBinding?.elementId && elementIdMap.has(cloned.endBinding.elementId)) {
+    cloned.endBinding.elementId = elementIdMap.get(cloned.endBinding.elementId);
+  }
+
+  return cloned;
+};
+
+const duplicateBranchToCanvas = async (index, { includeChildren = false } = {}) => {
+  state.suppressChange = true;
+
+  const branchItems = getBranchItems(index);
+  const sourceItems = includeChildren ? branchItems : [branchItems[0]];
+  const sourceFrameIds = new Set(sourceItems.map((item) => item.id));
+  const frameIdMap = new Map(sourceItems.map((item) => [item.id, createCloneId("frame")]));
+  const sceneElements = api.getSceneElements();
+  const sourceElements = sceneElements.filter(
+    (el) => !el.isDeleted && (sourceFrameIds.has(el.id) || sourceFrameIds.has(el.frameId))
+  );
+  const groupIdMap = new Map();
+
+  sourceElements.forEach((el) => {
+    (el.groupIds || []).forEach((groupId) => {
+      if (!groupIdMap.has(groupId)) {
+        groupIdMap.set(groupId, createCloneId("group"));
+      }
+    });
+  });
+
+  const elementIdMap = new Map(
+    sourceElements.map((el) => [el.id, frameIdMap.get(el.id) || createCloneId(el.type || "el")])
+  );
+  const clonedTreeItems = sourceItems.map((item) => ({
+    ...item,
+    id: frameIdMap.get(item.id),
+    collapsed: false,
+  }));
+  const insertIndex = index + branchItems.length;
+  const clonedSceneElements = sourceElements.map((el) => cloneSceneElement(el, elementIdMap, frameIdMap, groupIdMap));
+
+  treeData.splice(insertIndex, 0, ...clonedTreeItems);
+  api.updateScene({ elements: [...sceneElements, ...clonedSceneElements], commitToHistory: true });
+
+  setTimeout(async () => {
+    await syncToCanvas();
+    scheduleNumberingRefresh({ focusedId: clonedTreeItems[0]?.id || null });
+  }, 100);
+};
+
 // =====================================================================
 // === 2. 核心排版引擎 (自动绑定 + 拐角连线 + 自定义线条样式) ===
 // =====================================================================
@@ -790,6 +869,18 @@ const render = (focusedId = null) => {
         treeData = initTreeData();
         render(item.id);
         setTimeout(() => state.suppressChange = false, 300);
+      })
+    );
+
+    actions.appendChild(
+      createBtn("⎘", "向下复制当前节点", async () => {
+        await duplicateBranchToCanvas(index, { includeChildren: false });
+      })
+    );
+
+    actions.appendChild(
+      createBtn("⧉", "向下复制当前+子项", async () => {
+        await duplicateBranchToCanvas(index, { includeChildren: true });
       })
     );
 
