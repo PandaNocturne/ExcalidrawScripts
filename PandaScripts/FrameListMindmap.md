@@ -242,10 +242,10 @@ const syncToCanvas = async () => {
     strokeStyle: "solid",
     fillStyle: "solid",
     roughness: 0,
-    // elbowed: true,
     roundness: null,
     startArrowhead: null,
-    endArrowhead: "arrow"
+    endArrowhead: "arrow",
+    
   };
   Object.assign(ea.style, arrowStyle);
   const elementIdsBeforeConnect = new Set(Object.keys(ea.elementsDict));
@@ -269,6 +269,18 @@ const syncToCanvas = async () => {
   });
 
   await ea.addElementsToView(false, false);
+
+  // 最后设置箭头类型为拐角类型 elbowed: true,
+  const sceneElementsAfterLayout = api.getSceneElements();
+  const updatedSceneElements = sceneElementsAfterLayout.map(el => {
+    if (!newArrowIds.includes(el.id) || el.type !== "arrow") return el;
+    return {
+      ...el,
+      ...arrowStyle,
+      elbowed: true
+    };
+  });
+  api.updateScene({ elements: updatedSceneElements, commitToHistory: false });
 
   setTimeout(() => { state.suppressChange = false; }, 300);
 };
