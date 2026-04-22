@@ -101,6 +101,33 @@ const state = {
 const wait = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
 const cssVar = (name, fallback) => `var(${name}, ${fallback})`;
 
+const getFrameChildren = (frame, elements = ea.getViewElements()) => {
+  if (!frame?.id) return [];
+  return elements.filter((el) => el.id !== frame.id && el.frameId === frame.id);
+};
+
+const deleteFrameWithChildren = async (frameId) => {
+  const allElements = ea.getViewElements();
+  const frame = allElements.find((el) => el.id === frameId && el.type === "frame");
+  if (!frame) return false;
+
+  const targets = [frame, ...getFrameChildren(frame, allElements)];
+  if (!targets.length) return false;
+
+  ea.copyViewElementsToEAforEditing(targets);
+  ea.getElements().forEach((el) => {
+    el.isDeleted = true;
+  });
+  await ea.addElementsToView(true, true, false);
+
+  state.orderedFrameIds = state.orderedFrameIds.filter((id) => id !== frameId);
+  state.editId = state.editId === frameId ? null : state.editId;
+  state.clickCandidateId = state.clickCandidateId === frameId ? null : state.clickCandidateId;
+  state.skipPointerUpFrameId = state.skipPointerUpFrameId === frameId ? null : state.skipPointerUpFrameId;
+  render();
+  return true;
+};
+
 const getOrderedFrames = (frames = getFrames()) => {
   const frameMap = new Map(frames.map((frame) => [frame.id, frame]));
   const ordered = [];
@@ -475,6 +502,7 @@ const clearDropState = () => {
 const renderItem = (frame, options = {}) => {
   const {
     index = null,
+    displayIndex = null,
     draggable = true,
     droppable = true,
     zone = "sorted",
@@ -519,15 +547,6 @@ const renderItem = (frame, options = {}) => {
     flexShrink: "0",
   });
 
-  const content = document.createElement("div");
-  Object.assign(content.style, {
-    flex: "1",
-    minWidth: "0",
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-  });
-
   const jumpTarget = document.createElement("div");
   Object.assign(jumpTarget.style, {
     flex: "1",
@@ -537,13 +556,26 @@ const renderItem = (frame, options = {}) => {
     cursor: state.editId === frame.id ? "default" : "pointer",
   });
 
-  const isEditing = state.editId === frame.id;
-  const itemActionBtn = makeButton(isEditing ? "✖" : "✏️", isEditing ? "退出编辑" : "编辑这个 frame 名称");
-  Object.assign(itemActionBtn.style, {
+  const actions = document.createElement("div");
+  Object.assign(actions.style, {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
     flexShrink: "0",
   });
 
-  const displayName = normalizeFrameName(frame.name, index ?? 0);
+  const isEditing = state.editId === frame.id;
+  const editBtn = makeButton(isEditing ? "✖" : "✏️", isEditing ? "退出编辑" : "编辑这个 frame 名称");
+  const deleteBtn = makeButton("🗑", "删除这个 frame 及其内部元素");
+  Object.assign(editBtn.style, {
+    flexShrink: "0",
+  });
+  Object.assign(deleteBtn.style, {
+    flexShrink: "0",
+    color: cssVar("--text-error", "#d14343"),
+  });
+
+  const displayName = normalizeFrameName(frame.name, displayIndex ?? index ?? 0);
 
   if (isEditing) {
     const input = document.createElement("input");
@@ -578,7 +610,7 @@ const renderItem = (frame, options = {}) => {
       input.select();
     }, 0);
 
-    itemActionBtn.addEventListener("click", (event) => {
+    editBtn.addEventListener("click", (event) => {
       stop(event);
       state.editId = null;
       render();
@@ -601,15 +633,22 @@ const renderItem = (frame, options = {}) => {
     });
     jumpTarget.appendChild(label);
 
-    itemActionBtn.addEventListener("click", (event) => {
+    editBtn.addEventListener("click", (event) => {
       stop(event);
       beginEdit(frame.id);
     });
   }
 
+  deleteBtn.addEventListener("click", async (event) => {
+    stop(event);
+    await deleteFrameWithChildren(frame.id);
+  });
+
   topLine.appendChild(indexBadge);
   topLine.appendChild(jumpTarget);
-  topLine.appendChild(itemActionBtn);
+  actions.appendChild(editBtn);
+  actions.appendChild(deleteBtn);
+  topLine.appendChild(actions);
   item.appendChild(topLine);
 
   jumpTarget.addEventListener("pointerdown", (event) => {
@@ -822,6 +861,7 @@ const render = () => {
 
     unorganized.forEach((frame) => {
       unsortedList.appendChild(renderItem(frame, {
+        displayIndex: frames.findIndex((item) => item.id === frame.id),
         draggable: true,
         droppable: true,
         zone: "unsorted",
