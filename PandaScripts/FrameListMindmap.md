@@ -1,60 +1,64 @@
 /*
-## Frame 大纲列表 - 高阶大纲树交互版
-- 亮点：连带子节点整体拖拽、Tab / Shift+Tab 快捷键控制层级
-- 状态：纯 UI 与大纲逻辑，未联动画布
+## Frame 大纲列表 - 终极版 (支持折叠)
+- 新增：点击三角图标折叠/展开子节点
+- 拖拽适配：拖拽折叠状态的父节点，会连同其隐藏的子节点一并移动
+- 智能展开：将项目拖拽到折叠的父节点下作为其子级时，父节点会自动展开
 */
 
 const api = ea.getExcalidrawAPI();
 const view = ea.targetView;
 const container = view?.containerEl?.querySelector?.(".excalidraw-wrapper") || view?.containerEl;
 
-const ROOT_ID = "ea-frame-outline-v4";
-const GLOBAL_KEY = "__eaFrameOutlineV4__";
+const ROOT_ID = "ea-frame-outline-v5";
+const GLOBAL_KEY = "__eaFrameOutlineV5__";
 const registry = window[GLOBAL_KEY] ||= new WeakMap();
 if (registry.get(container)?.cleanup) {
   registry.get(container).cleanup();
   return;
 }
 
-// --- 1. 初始化模拟数据 ---
+// --- 1. 数据初始化 (加入 collapsed 属性) ---
 let mockData = ea.getViewElements()
   .filter(el => el.type === "frame")
-  .map(el => ({ id: el.id, name: el.name || "未命名", depth: 0 }));
+  .map(el => ({ id: el.id, name: el.name || "未命名", depth: 0, collapsed: false }));
 
 if (mockData.length === 0) {
   mockData = [
-    { id: "1", name: "根节点 A", depth: 0 },
-    { id: "2", name: "子节点 A-1", depth: 1 },
-    { id: "3", name: "孙节点 A-1-1", depth: 2 },
-    { id: "4", name: "根节点 B", depth: 0 },
-    { id: "5", name: "子节点 B-1", depth: 1 },
+    { id: "1", name: "第一章", depth: 0, collapsed: false },
+    { id: "2", name: "第1节 (尝试点击左侧折叠)", depth: 1, collapsed: false },
+    { id: "3", name: "1.1 细节", depth: 2, collapsed: false },
+    { id: "4", name: "1.2 细节", depth: 2, collapsed: false },
+    { id: "5", name: "第二章", depth: 0, collapsed: false },
+    { id: "6", name: "第1节", depth: 1, collapsed: false },
   ];
 }
 
-// --- 2. 状态管理 ---
-const INDENT_SIZE = 24;
+const INDENT_SIZE = 22;
 const state = {
   draggingId: null,
   dragIndex: -1,
-  dragCount: 0, // 当前拖拽包含多少个子节点（包含自身）
+  dragCount: 0,
   targetIndex: -1,
   targetDepth: 0,
-  itemBounds: [],
+  itemBounds: [], 
 };
 
 const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 
-// 获取某个节点及其所有子节点的数量 (计算分支跨度)
+// 获取某个节点及其所有子节点的总数（无论是否折叠）
 const getBranchCount = (index, data) => {
   const baseDepth = data[index].depth;
   let count = 1;
-  while (index + count < data.length && data[index + count].depth > baseDepth) {
-    count++;
-  }
+  while (index + count < data.length && data[index + count].depth > baseDepth) count++;
   return count;
 };
 
-// --- 3. UI 结构 ---
+// 检查是否有子节点
+const hasChildren = (index, data) => {
+  return index + 1 < data.length && data[index + 1].depth > data[index].depth;
+};
+
+// --- 2. UI 骨架搭建 ---
 const root = document.createElement("div");
 Object.assign(root.style, {
   position: "absolute", right: "20px", top: "60px", zIndex: "40",
@@ -67,7 +71,7 @@ Object.assign(root.style, {
 });
 
 const header = document.createElement("div");
-header.textContent = "专业大纲列表 (支持 Tab 缩进/子树拖拽)";
+header.textContent = "大纲列表 (折叠与拖拽测试)";
 Object.assign(header.style, {
   padding: "12px", fontSize: "12px", fontWeight: "600",
   background: "var(--background-secondary, #f4f5f7)", 
@@ -99,55 +103,92 @@ root.appendChild(header);
 root.appendChild(listContainer);
 container.appendChild(root);
 
-// --- 4. 渲染引擎 ---
+// --- 3. 渲染引擎 ---
 const render = (focusedId = null) => {
   Array.from(listContainer.children).forEach(child => {
     if (child !== dropIndicator) child.remove();
   });
 
+  let hideDepthLimit = null; // 用于折叠的深度限制过滤
+
   mockData.forEach((item, index) => {
+    // 【折叠逻辑】：如果当前深度超过了隐藏限制，跳过渲染
+    if (hideDepthLimit !== null) {
+      if (item.depth > hideDepthLimit) return; 
+      else hideDepthLimit = null; // 跳出了折叠层级，恢复渲染
+    }
+
+    const isParent = hasChildren(index, mockData);
+    
+    // 如果当前节点是折叠状态，且它是父节点，设置后续元素的隐藏阈值
+    if (item.collapsed && isParent) {
+      hideDepthLimit = item.depth;
+    }
+
     const el = document.createElement("div");
     el.className = "frame-list-item";
     el.draggable = true;
     el.dataset.id = item.id;
-    el.tabIndex = 0; // 允许聚焦，以接收快捷键
+    el.dataset.dataIndex = index; // 记录它在总数据中的真实索引
+    el.tabIndex = 0; 
     
     Object.assign(el.style, {
-      padding: `6px 12px 6px ${12 + item.depth * INDENT_SIZE}px`,
+      padding: `4px 12px 4px ${12 + item.depth * INDENT_SIZE}px`,
       fontSize: "13px", display: "flex", alignItems: "center",
       cursor: "grab", color: "var(--text-normal, #1e293b)",
-      outline: "none", // 移除默认高亮，自定义 focus 样式
-      border: "1px solid transparent",
-      borderRadius: "4px", margin: "0 4px"
+      outline: "none", borderRadius: "4px", margin: "0 4px",
+      border: "1px solid transparent"
     });
 
-    el.innerHTML = `
-      <span style="margin-right:8px; color:var(--text-muted, #94a3b8); font-size:16px; line-height:1; pointer-events:none;">•</span>
-      <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; pointer-events:none;">${item.name}</span>
-    `;
+    // 折叠/展开 图标
+    const toggle = document.createElement("div");
+    Object.assign(toggle.style, {
+      width: "20px", height: "20px", display: "flex", 
+      alignItems: "center", justifyContent: "center",
+      marginRight: "4px", borderRadius: "4px",
+      color: "var(--text-muted, #94a3b8)",
+      cursor: isParent ? "pointer" : "default",
+      fontSize: isParent ? "10px" : "14px", transition: "background 0.1s"
+    });
+    
+    toggle.innerHTML = isParent ? (item.collapsed ? "▶" : "▼") : "•";
+    
+    if (isParent) {
+      toggle.onclick = (e) => {
+        e.stopPropagation();
+        item.collapsed = !item.collapsed;
+        render(item.id);
+      };
+      toggle.onmouseenter = () => toggle.style.background = "var(--background-modifier-border, #e2e8f0)";
+      toggle.onmouseleave = () => toggle.style.background = "transparent";
+    }
 
-    // 交互样式
+    const text = document.createElement("span");
+    text.textContent = item.name;
+    Object.assign(text.style, {
+      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none"
+    });
+
+    el.appendChild(toggle);
+    el.appendChild(text);
+
+    // 交互样式与快捷键
     el.onfocus = () => { el.style.background = "var(--background-modifier-hover, #f1f5f9)"; };
     el.onblur = () => { el.style.background = "transparent"; };
     el.onmouseenter = () => { if(!state.draggingId && document.activeElement !== el) el.style.background = "var(--background-modifier-hover, #f1f5f9)"; };
     el.onmouseleave = () => { if(document.activeElement !== el) el.style.background = "transparent"; };
 
-    // --- 快捷键逻辑 (Tab / Shift+Tab) ---
     el.onkeydown = (e) => {
       if (e.key === "Tab") {
         e.preventDefault();
         const branchCount = getBranchCount(index, mockData);
-        
         if (e.shiftKey) {
-          // 向左缩进 (Shift+Tab)
           if (item.depth > 0) {
             for(let i = 0; i < branchCount; i++) mockData[index + i].depth -= 1;
             render(item.id);
           }
         } else {
-          // 向右缩进 (Tab)
           const prevDepth = index > 0 ? mockData[index - 1].depth : -1;
-          // 只有当当前深度 小于等于 上一项深度时，才允许进一步缩进 (保持父子级连续)
           if (item.depth <= prevDepth) {
             for(let i = 0; i < branchCount; i++) mockData[index + i].depth += 1;
             render(item.id);
@@ -159,24 +200,27 @@ const render = (focusedId = null) => {
     // --- 拖拽逻辑 ---
     el.ondragstart = (e) => {
       state.draggingId = item.id;
-      state.dragIndex = index;
-      state.dragCount = getBranchCount(index, mockData); // 获取整个树枝的数量
+      state.dragIndex = index; // 真实索引
+      state.dragCount = getBranchCount(index, mockData); 
       e.dataTransfer.effectAllowed = "move";
       
-      // 让整个树枝变透明
       setTimeout(() => {
         const domNodes = listContainer.querySelectorAll(".frame-list-item");
-        for(let i = 0; i < state.dragCount; i++) {
-          if(domNodes[index + i]) domNodes[index + i].style.opacity = "0.3";
-        }
+        domNodes.forEach(node => {
+          const nodeDataIdx = parseInt(node.dataset.dataIndex);
+          // 变透明：选中自身及所有渲染在DOM里的子节点
+          if (nodeDataIdx >= state.dragIndex && nodeDataIdx < state.dragIndex + state.dragCount) {
+            node.style.opacity = "0.3";
+          }
+        });
       }, 0);
 
-      // 缓存坐标
       state.itemBounds = Array.from(listContainer.querySelectorAll(".frame-list-item")).map((node, i) => {
         const rect = node.getBoundingClientRect();
         const containerRect = listContainer.getBoundingClientRect();
         return {
-          index: i, top: rect.top - containerRect.top + listContainer.scrollTop,
+          domIndex: i, dataIndex: parseInt(node.dataset.dataIndex),
+          top: rect.top - containerRect.top + listContainer.scrollTop,
           bottom: rect.bottom - containerRect.top + listContainer.scrollTop,
           middle: rect.top - containerRect.top + listContainer.scrollTop + (rect.height / 2)
         };
@@ -186,13 +230,12 @@ const render = (focusedId = null) => {
     el.ondragend = () => {
       state.draggingId = null;
       dropIndicator.style.display = "none";
-      render(); // 重置所有透明度
+      render(); 
     };
 
     listContainer.appendChild(el);
   });
 
-  // 恢复焦点
   if (focusedId) {
     setTimeout(() => {
       const target = listContainer.querySelector(`[data-id="${focusedId}"]`);
@@ -201,7 +244,7 @@ const render = (focusedId = null) => {
   }
 };
 
-// --- 5. 全局容器拖拽响应 ---
+// --- 4. 拖拽坐标指示器 ---
 listContainer.ondragover = (e) => {
   e.preventDefault();
   if (!state.draggingId) return;
@@ -210,75 +253,77 @@ listContainer.ondragover = (e) => {
   const mouseY = e.clientY - containerRect.top + listContainer.scrollTop;
   const mouseX = e.clientX - containerRect.left;
 
-  // 1. 寻找插入点
-  let insertIndex = state.itemBounds.length;
+  // 1. 根据鼠标 Y 轴找到悬浮在哪个可见元素的缝隙中
+  let boundIdx = state.itemBounds.length;
   let referenceBound = null;
-  for (let bound of state.itemBounds) {
-    if (mouseY < bound.middle) { insertIndex = bound.index; referenceBound = bound; break; }
+  for (let i = 0; i < state.itemBounds.length; i++) {
+    if (mouseY < state.itemBounds[i].middle) {
+      boundIdx = i; referenceBound = state.itemBounds[i]; break;
+    }
   }
 
-  // 2. 约束：不能插入到自己或自己的子节点内部
-  if (insertIndex >= state.dragIndex && insertIndex <= state.dragIndex + state.dragCount) {
+  // 计算目标真实数据索引
+  const insertDataIndex = referenceBound ? referenceBound.dataIndex : mockData.length;
+  // 找到插入位置正上方的那一行（视觉上）
+  const prevVisibleDataIndex = boundIdx > 0 ? state.itemBounds[boundIdx - 1].dataIndex : -1;
+
+  // 约束：防止拖到自己或自己的隐藏节点内部
+  if (insertDataIndex > state.dragIndex && insertDataIndex <= state.dragIndex + state.dragCount) {
     dropIndicator.style.display = "none";
     state.targetIndex = -1;
     return;
   }
 
-  // 3. 计算合法的上一节点 Depth
-  let prevValidIndex = insertIndex - 1;
-  // 如果插入点在被拖拽树枝的正下方，那视觉上的上一个节点其实是 树枝上面的那个节点
-  if (prevValidIndex >= state.dragIndex && prevValidIndex < state.dragIndex + state.dragCount) {
-    prevValidIndex = state.dragIndex - 1;
-  }
-  const maxDepth = prevValidIndex >= 0 ? mockData[prevValidIndex].depth + 1 : 0;
-  
-  // 根据鼠标横向位置计算目标深度
-  const suggestedDepth = Math.max(0, Math.floor((mouseX - 12) / INDENT_SIZE));
+  // 2. 根据上方元素计算最大允许深度
+  const maxDepth = prevVisibleDataIndex >= 0 ? mockData[prevVisibleDataIndex].depth + 1 : 0;
+  const suggestedDepth = Math.max(0, Math.floor((mouseX - 24) / INDENT_SIZE));
   const finalDepth = clamp(suggestedDepth, 0, maxDepth);
 
-  // 4. 定位指示线
+  // 3. 画出占位指示线
   let indicatorTop = referenceBound ? referenceBound.top : (state.itemBounds.length ? state.itemBounds[state.itemBounds.length - 1].bottom : 0);
-  const indicatorLeft = 12 + 4 + finalDepth * INDENT_SIZE; // +4是补偿外边距
+  const indicatorLeft = 12 + 10 + finalDepth * INDENT_SIZE; // +10避开Toggle图标位置
   
   dropIndicator.style.display = "block";
   dropIndicator.style.top = `${indicatorTop}px`;
   dropIndicator.style.left = `${indicatorLeft}px`;
   dropIndicator.style.width = `calc(100% - ${indicatorLeft + 12}px)`;
 
-  state.targetIndex = insertIndex;
+  state.targetIndex = insertDataIndex;
   state.targetDepth = finalDepth;
+  state.prevVisibleDataIndex = prevVisibleDataIndex;
 };
 
-// --- 6. 放置逻辑 ---
+// --- 5. 放置并更新数据 ---
 listContainer.ondrop = (e) => {
   e.preventDefault();
   dropIndicator.style.display = "none";
 
   if (state.targetIndex !== -1 && state.draggingId) {
-    // 切割出整个树枝
+    // 智能展开：如果把它拖成某个折叠节点的子节点，自动展开该父节点
+    if (state.prevVisibleDataIndex >= 0) {
+      const prevNode = mockData[state.prevVisibleDataIndex];
+      if (state.targetDepth > prevNode.depth && prevNode.collapsed) {
+        prevNode.collapsed = false;
+      }
+    }
+
     const branch = mockData.splice(state.dragIndex, state.dragCount);
-    
-    // 计算深度变化差值 (目标深度 - 原树枝根节点深度)
     const depthDelta = state.targetDepth - branch[0].depth;
-    // 整个树枝统一调整深度
     branch.forEach(item => item.depth += depthDelta);
 
-    // 计算实际插入位置 (因为前面 slice 导致原数组长度缩短)
     let actualInsertIndex = state.targetIndex;
     if (state.targetIndex > state.dragIndex) {
       actualInsertIndex -= state.dragCount;
     }
 
-    // 重新插入数组
     mockData.splice(actualInsertIndex, 0, ...branch);
-    render(state.draggingId); // 渲染并保持焦点
+    render(state.draggingId); 
   }
   
   state.draggingId = null;
   state.targetIndex = -1;
 };
 
-// --- 7. 清理 ---
 const cleanup = () => { root.remove(); registry.delete(container); };
 registry.set(container, { cleanup });
 render();
