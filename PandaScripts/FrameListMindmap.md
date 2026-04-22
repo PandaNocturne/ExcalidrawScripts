@@ -532,7 +532,7 @@ const refreshBtn = createIconButton("🔄️", "刷新并重排", async (e) => {
   e.stopPropagation();
   treeData = initTreeData();
   await syncToCanvas();
-  render();
+  scheduleNumberingRefresh({ reinit: true });
 });
 
 const settingsBtn = createIconButton("⚙️", "布局设置", (e) => {
