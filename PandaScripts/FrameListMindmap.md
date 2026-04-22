@@ -782,9 +782,11 @@ const render = (focusedId = null) => {
     li.ondblclick = (e) => {
       if (actions.contains(e.target) || toggle.contains(e.target)) return;
 
-      const targetFrame = api.getSceneElements().find((el) => el.id === item.id);
-      if (targetFrame) {
-        api.zoomToFit([targetFrame], 3);
+      const branchCount = getBranchCount(index, treeData);
+      const branchIds = new Set(treeData.slice(index, index + branchCount).map((node) => node.id));
+      const targetFrames = api.getSceneElements().filter((el) => branchIds.has(el.id));
+      if (targetFrames.length > 0) {
+        api.zoomToFit(targetFrames, 3);
       }
     };
 
