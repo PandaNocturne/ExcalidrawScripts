@@ -1,8 +1,9 @@
 /*
-## Frame 导图大纲 (加粗线条 + 原生完美拐角 + 边缘锁定版 + 同步删除连线)
-- 样式更新：线条加粗 (strokeWidth: 4)，实线样式，填充样式。
-- 核心：使用 ea.connectObjects 解决连线脱落问题，全自动生成原生 Elbow 拐角连线，并强制锁定左右边缘锚点。
-- 更新：删除节点时，自动清理相连的孤立连线。
+## Frame 导图大纲 (加粗线条 + 完美拐角版 + 边缘锁定 + 智能编号)
+- 样式更新：全自动生成原生 Elbow 拐角连线，强制锁定左右边缘锚点。
+- 节点操作：支持节点同步删除，支持点击编辑标题，双击大纲跳转画布。
+- 细节调整：去除了头部的新建一级节点按钮，一级列表去除了添加同级按钮。
+- 新增功能：一键智能编号 (一级 01, 02... 二级 01, 02...)。
 */
 
 const api = ea.getExcalidrawAPI();
@@ -222,10 +223,10 @@ const syncToCanvas = async () => {
     strokeStyle: "solid",
     fillStyle: "solid",
     roughness: 0,
-    roundness: { type: 2 }, // Excalidraw 原生平滑拐角
+    roundness: { type: 2 },
     startArrowhead: null,
     endArrowhead: "arrow",
-    elbowed: true,          // 开启原生拐角模式
+    elbowed: true,
   };
 
   Object.assign(ea.style, arrowStyle);
@@ -241,13 +242,12 @@ const syncToCanvas = async () => {
     if (el?.type !== "arrow") return;
     Object.assign(el, arrowStyle);
 
-    // 强制绑定连接锚点到边缘，避免中心连接导致布局和连线混乱
     if (el.startBinding) {
-      el.startBinding.fixedPoint = [1, 0.5]; // 1代表最右侧边缘，0.5代表垂直居中
-      delete el.startBinding.focus;          // 删除悬浮焦点
+      el.startBinding.fixedPoint = [1, 0.5];
+      delete el.startBinding.focus;
     }
     if (el.endBinding) {
-      el.endBinding.fixedPoint = [0, 0.5];   // 0代表最左侧边缘，0.5代表垂直居中
+      el.endBinding.fixedPoint = [0, 0.5];
       delete el.endBinding.focus;
     }
   });
@@ -423,6 +423,47 @@ const applySettingsFromInputs = async () => {
 horizontalGapInput.onchange = applySettingsFromInputs;
 verticalGapInput.onchange = applySettingsFromInputs;
 
+// [新增] 一键编号按钮
+const numberBtn = createIconButton("🔢", "自动编号", (e) => {
+  e.stopPropagation();
+  let counters = [];
+  const updates = [];
+
+  treeData.forEach((item) => {
+    const d = item.depth;
+    // 截断深层计数器，确保子级重新从 1 开始
+    counters.splice(d + 1);
+    counters[d] = (counters[d] || 0) + 1;
+
+    // 生成两位数编号，如 01, 02
+    const numStr = String(counters[d]).padStart(2, '0');
+
+    // 清理可能已经存在的 "数字+空格" 编号，防止叠加 (如 "01 01 节点")
+    const cleanName = item.name.replace(/^\d{2}\s+/, '');
+    const newName = `${numStr} ${cleanName}`;
+
+    if (item.name !== newName) {
+      item.name = newName;
+      updates.push({ id: item.id, name: newName });
+    }
+  });
+
+  if (updates.length > 0) {
+    state.suppressChange = true;
+    const sceneElements = api.getSceneElements();
+    const updatedScene = sceneElements.map((el) => {
+      const u = updates.find((x) => x.id === el.id);
+      return u ? { ...el, name: u.name } : el;
+    });
+
+    api.updateScene({ elements: updatedScene, commitToHistory: true });
+    setTimeout(() => {
+      state.suppressChange = false;
+      render();
+    }, 300);
+  }
+});
+
 const refreshBtn = createIconButton("🔄️", "刷新并重排", async (e) => {
   e.stopPropagation();
   treeData = initTreeData();
@@ -437,6 +478,8 @@ const settingsBtn = createIconButton("⚙️", "布局设置", (e) => {
   if (state.settingsOpen) syncSettingsInputs();
 });
 
+// 添加到头部，去除了新建节点按钮
+headerActions.appendChild(numberBtn);
 headerActions.appendChild(settingsBtn);
 headerActions.appendChild(refreshBtn);
 header.appendChild(headerTitle);
@@ -522,17 +565,11 @@ const addNewFrameToCanvas = async (name, insertToDataCallback) => {
   }, 100);
 };
 
-// =====================================================================
-// [已更新]: 删除节点时，连带删除两端绑定的箭头
-// =====================================================================
 const deleteFramesFromCanvas = async (idsToDeleteSet) => {
   state.suppressChange = true;
   const sceneElements = api.getSceneElements();
   const updated = sceneElements.map((el) => {
-    // 1. 判断是不是要删除的 Frame 或者 Frame 内部的元素
     const isTargetFrameOrInner = idsToDeleteSet.has(el.id) || idsToDeleteSet.has(el.frameId);
-
-    // 2. 判断是不是箭头，并且箭头的起点或终点连在这个被删的 Frame 上
     const isConnectedArrow = el.type === "arrow" && (
       idsToDeleteSet.has(el.startBinding?.elementId) ||
       idsToDeleteSet.has(el.endBinding?.elementId)
@@ -662,13 +699,37 @@ const render = (focusedId = null) => {
     };
 
     actions.appendChild(
-      createBtn("+", "添加同级", () => {
-        addNewFrameToCanvas("新建节点", (newId) => {
-          const branchCount = getBranchCount(index, treeData);
-          treeData.splice(index + branchCount, 0, { id: newId, name: "新建节点", depth: item.depth, collapsed: false });
-        });
+      createBtn("✎", "修改标题", () => {
+        const newTitle = window.prompt("请输入新的节点名称", item.name);
+        if (newTitle !== null && newTitle.trim() !== "") {
+          const finalName = newTitle.trim();
+          item.name = finalName;
+
+          state.suppressChange = true;
+          const sceneElements = api.getSceneElements();
+          const updated = sceneElements.map((el) => {
+            if (el.id === item.id) return { ...el, name: finalName };
+            return el;
+          });
+          api.updateScene({ elements: updated, commitToHistory: true });
+          render(item.id);
+          setTimeout(() => state.suppressChange = false, 300);
+        }
       })
     );
+
+    // [更新] 一级列表不需要+按钮，只在 depth > 0 时渲染
+    if (item.depth > 0) {
+      actions.appendChild(
+        createBtn("+", "添加同级", () => {
+          addNewFrameToCanvas("新建节点", (newId) => {
+            const branchCount = getBranchCount(index, treeData);
+            treeData.splice(index + branchCount, 0, { id: newId, name: "新建节点", depth: item.depth, collapsed: false });
+          });
+        })
+      );
+    }
+
     actions.appendChild(
       createBtn("↳", "添加子项", () => {
         item.collapsed = false;
@@ -677,6 +738,7 @@ const render = (focusedId = null) => {
         });
       })
     );
+
     actions.appendChild(
       createBtn("×", "删除", () => {
         const branchCount = getBranchCount(index, treeData);
@@ -688,6 +750,15 @@ const render = (focusedId = null) => {
     li.appendChild(toggle);
     li.appendChild(text);
     li.appendChild(actions);
+
+    li.ondblclick = (e) => {
+      if (actions.contains(e.target) || toggle.contains(e.target)) return;
+
+      const targetFrame = api.getSceneElements().find((el) => el.id === item.id);
+      if (targetFrame) {
+        api.zoomToFit([targetFrame], 3);
+      }
+    };
 
     li.onfocus = () => {
       li.style.background = "var(--background-modifier-hover, #f1f5f9)";
