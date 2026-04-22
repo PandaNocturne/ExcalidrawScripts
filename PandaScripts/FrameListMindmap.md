@@ -808,7 +808,8 @@ const render = (focusedId = null) => {
       createBtn("↳", "添加子项", () => {
         item.collapsed = false;
         addNewFrameToCanvas("新建子节点", (newId) => {
-          treeData.splice(index + 1, 0, { id: newId, name: "新建子节点", depth: item.depth + 1, collapsed: false });
+          const branchCount = getBranchCount(index, treeData);
+          treeData.splice(index + branchCount, 0, { id: newId, name: "新建子节点", depth: item.depth + 1, collapsed: false });
         });
       })
     );
