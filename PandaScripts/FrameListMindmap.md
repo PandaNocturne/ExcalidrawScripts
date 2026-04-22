@@ -1,8 +1,7 @@
-
 /*
-## Frame 大纲列表 - 严格单例版
-- 功能：UL/LI 语义化、子树拖拽、折叠、Tab 缩进
-- 修复：采用全局 DOM ID 检测，防止重复打开。再次运行即可关闭。
+## Frame 大纲列表 - 添加增删节点交互版
+- 新增：悬浮显示 [添加同级]、[添加子项]、[删除] 按钮。
+- 逻辑：支持连带子树的完整操作，防多开单例模式。
 */
 
 const api = ea.getExcalidrawAPI();
@@ -14,13 +13,13 @@ if (!container) {
   return;
 }
 
-// --- 0. 严格的防重复打开 (Toggle 开关逻辑) ---
-const ROOT_ID = "ea-frame-outline-strict-singleton";
+// --- 0. 防重复打开 (Toggle 开关逻辑) ---
+const ROOT_ID = "ea-frame-outline-actions";
 const existingPanel = document.getElementById(ROOT_ID);
 if (existingPanel) {
   existingPanel.remove();
   new Notice("关闭 Frame 大纲");
-  return; // 直接退出，实现 Toggle 效果
+  return; 
 }
 
 new Notice("打开 Frame 大纲");
@@ -32,11 +31,10 @@ let mockData = ea.getViewElements()
 
 if (mockData.length === 0) {
   mockData = [
-    { id: "1", name: "第一章 (尝试拖拽)", depth: 0, collapsed: false },
-    { id: "2", name: "第1节", depth: 1, collapsed: false },
+    { id: "1", name: "第一章", depth: 0, collapsed: false },
+    { id: "2", name: "第1节 (鼠标悬浮右侧看按钮)", depth: 1, collapsed: false },
     { id: "3", name: "1.1 细节", depth: 2, collapsed: false },
     { id: "4", name: "第二章", depth: 0, collapsed: false },
-    { id: "5", name: "第1节", depth: 1, collapsed: false },
   ];
 }
 
@@ -61,10 +59,10 @@ const hasChildren = (index, data) => {
 
 // --- 2. UI 骨架搭建 ---
 const root = document.createElement("div");
-root.id = ROOT_ID; // 绑定唯一 ID
+root.id = ROOT_ID; 
 Object.assign(root.style, {
   position: "absolute", right: "20px", top: "60px", zIndex: "40",
-  width: "300px", maxHeight: "500px",
+  width: "320px", maxHeight: "500px",
   background: "var(--background-primary, #ffffff)",
   border: "1px solid var(--background-modifier-border, #d4d4d8)",
   borderRadius: "8px", boxShadow: "var(--shadow-s)",
@@ -73,28 +71,23 @@ Object.assign(root.style, {
 });
 
 const header = document.createElement("div");
-header.textContent = "语义化大纲 (防多开版)";
+header.textContent = "大纲列表 (支持增删节点)";
 Object.assign(header.style, {
   padding: "12px", fontSize: "12px", fontWeight: "600",
   background: "var(--background-secondary, #f4f5f7)", 
   borderBottom: "1px solid var(--background-modifier-border, #d4d4d8)"
 });
 
-// 滚动容器 
 const scrollWrapper = document.createElement("div");
 Object.assign(scrollWrapper.style, { 
   flex: "1", overflowY: "auto", position: "relative", minHeight: "150px" 
 });
 
-// 真正的列表容器
 const ulContainer = document.createElement("ul");
 Object.assign(ulContainer.style, {
-  listStyle: "none", 
-  margin: "0", 
-  padding: "8px 0"
+  listStyle: "none", margin: "0", padding: "8px 0"
 });
 
-// 拖拽指示线
 const dropIndicator = document.createElement("div");
 Object.assign(dropIndicator.style, {
   position: "absolute", left: "0", top: "0", height: "2px",
@@ -138,7 +131,7 @@ const render = (focusedId = null) => {
     li.tabIndex = 0; 
     
     Object.assign(li.style, {
-      padding: `4px 12px 4px ${12 + item.depth * INDENT_SIZE}px`,
+      padding: `4px 8px 4px ${12 + item.depth * INDENT_SIZE}px`,
       fontSize: "13px", display: "flex", alignItems: "center",
       cursor: "grab", color: "var(--text-normal, #1e293b)",
       outline: "none", borderRadius: "4px", margin: "0 4px",
@@ -148,7 +141,7 @@ const render = (focusedId = null) => {
     const toggle = document.createElement("div");
     Object.assign(toggle.style, {
       width: "20px", height: "20px", display: "flex", 
-      alignItems: "center", justifyContent: "center",
+      alignItems: "center", justifyContent: "center", flexShrink: 0,
       marginRight: "4px", borderRadius: "4px",
       color: "var(--text-muted, #94a3b8)",
       cursor: isParent ? "pointer" : "default",
@@ -169,16 +162,79 @@ const render = (focusedId = null) => {
     const text = document.createElement("span");
     text.textContent = item.name;
     Object.assign(text.style, {
-      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none"
+      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none", flex: "1"
     });
+
+    // --- 动作按钮区域 ---
+    const actions = document.createElement("div");
+    Object.assign(actions.style, {
+      display: "flex", gap: "2px", opacity: "0", transition: "opacity 0.1s", pointerEvents: "auto"
+    });
+
+    const createBtn = (char, title, onClick) => {
+      const btn = document.createElement("div");
+      btn.textContent = char;
+      btn.title = title;
+      Object.assign(btn.style, {
+        width: "20px", height: "20px", display: "flex",
+        alignItems: "center", justifyContent: "center",
+        cursor: "pointer", borderRadius: "4px",
+        color: "var(--text-muted, #94a3b8)",
+        fontSize: "14px", fontWeight: "bold"
+      });
+      btn.onmouseenter = () => btn.style.background = "var(--background-modifier-border, #e2e8f0)";
+      btn.onmouseleave = () => btn.style.background = "transparent";
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        onClick();
+      };
+      return btn;
+    };
+
+    const addSiblingBtn = createBtn("+", "添加同级", () => {
+      const branchCount = getBranchCount(index, mockData);
+      const newId = Date.now().toString();
+      mockData.splice(index + branchCount, 0, { id: newId, name: "新建同级", depth: item.depth, collapsed: false });
+      render(newId);
+    });
+
+    const addChildBtn = createBtn("↳", "添加子项", () => {
+      item.collapsed = false; // 强行展开父节点以查看新建的子节点
+      const newId = Date.now().toString();
+      mockData.splice(index + 1, 0, { id: newId, name: "新建子项", depth: item.depth + 1, collapsed: false });
+      render(newId);
+    });
+
+    const deleteBtn = createBtn("×", "删除 (含子项)", () => {
+      const branchCount = getBranchCount(index, mockData);
+      mockData.splice(index, branchCount);
+      render();
+    });
+
+    actions.appendChild(addSiblingBtn);
+    actions.appendChild(addChildBtn);
+    actions.appendChild(deleteBtn);
 
     li.appendChild(toggle);
     li.appendChild(text);
+    li.appendChild(actions); // 将按钮组加在最右侧
 
+    // 交互样式与事件
     li.onfocus = () => { li.style.background = "var(--background-modifier-hover, #f1f5f9)"; };
     li.onblur = () => { li.style.background = "transparent"; };
-    li.onmouseenter = () => { if(!state.draggingId && document.activeElement !== li) li.style.background = "var(--background-modifier-hover, #f1f5f9)"; };
-    li.onmouseleave = () => { if(document.activeElement !== li) li.style.background = "transparent"; };
+    
+    li.onmouseenter = () => { 
+      if(!state.draggingId && document.activeElement !== li) {
+        li.style.background = "var(--background-modifier-hover, #f1f5f9)"; 
+      }
+      actions.style.opacity = "1"; // 鼠标悬浮时显示按钮
+    };
+    li.onmouseleave = () => { 
+      if(document.activeElement !== li) {
+        li.style.background = "transparent"; 
+      }
+      actions.style.opacity = "0"; // 鼠标移开隐藏按钮
+    };
 
     li.onkeydown = (e) => {
       if (e.key === "Tab") {
