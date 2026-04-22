@@ -65,6 +65,18 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Description：将“frame”的大小和位置自适应到其中包含的元素。
   - ![24.06.18_Excalidraw脚本-Frame框架自适应大小.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409091251983.gif)
 
+### FrameFloatingOutline
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FrameFloatingOutline.md
+```
+
+- Author：熊猫别熬夜
+- Description：为当前 Excalidraw 视图提供可开关的悬浮 Frame 大纲，支持定位、重命名、拖拽排序、删除 Frame 及其内部元素，并可调整面板尺寸与位置。
+  - 支持按已排序区 / 未排序区展示 Frame
+  - 支持点击条目聚焦、编辑名称、删除整个 Frame 及内部元素
+  - 删除操作会写入 Excalidraw 历史，可通过 `Ctrl+Z` 撤回
+
 ### ExcalidrawMinimap
 
 ```excalidraw-script-install
