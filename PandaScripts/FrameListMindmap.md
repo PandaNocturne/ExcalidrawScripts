@@ -21,16 +21,68 @@ const registry = window[GLOBAL_KEY] ||= new WeakMap();
 if (registry.get(container)?.cleanup) {
   registry.get(container).cleanup();
   new Notice("关闭 Frame 导图大纲");
-  return; 
+  return;
 }
 new Notice("打开 Frame 导图大纲");
+
+const settings = ea.getScriptSettings();
+const defaultSettings = {
+  "Frame List Mindmap": {
+    value: "Frame List Mindmap",
+    hidden: true
+  },
+  "Horizontal gap": {
+    value: 80,
+    description: "父子 Frame 之间的额外水平间距"
+  },
+  "Vertical gap": {
+    value: 40,
+    description: "节点垂直留白，用于子树分层"
+  },
+  "Curve length": {
+    value: 80,
+    description: "连线第一段水平长度"
+  },
+  "Arrow tail length": {
+    value: 100,
+    description: "连线第二段水平长度"
+  },
+  "Arrow vertical nudge": {
+    value: 2,
+    description: "连线末端轻微弯曲修正"
+  },
+  "Arrow stroke color": {
+    value: "#808080",
+    description: "导图连线颜色"
+  },
+  "Arrow stroke width": {
+    value: 4,
+    description: "导图连线宽度"
+  }
+};
+let shouldSaveSettings = false;
+Object.entries(defaultSettings).forEach(([key, value]) => {
+  if (!(key in settings)) {
+    settings[key] = value;
+    shouldSaveSettings = true;
+  }
+});
+if (shouldSaveSettings) ea.setScriptSettings(settings);
+
+const HORIZONTAL_GAP = Number(settings["Horizontal gap"]?.value ?? 80);
+const VERTICAL_GAP = Number(settings["Vertical gap"]?.value ?? 40);
+const CURVE_LENGTH = Number(settings["Curve length"]?.value ?? 80);
+const ARROW_TAIL_LENGTH = Number(settings["Arrow tail length"]?.value ?? 100);
+const ARROW_VERTICAL_NUDGE = Number(settings["Arrow vertical nudge"]?.value ?? 2);
+const ARROW_STROKE_COLOR = String(settings["Arrow stroke color"]?.value ?? "#808080");
+const ARROW_STROKE_WIDTH = Number(settings["Arrow stroke width"]?.value ?? 4);
 
 // --- 1. 画布数据解析引擎 (Canvas -> UI) ---
 const initTreeData = () => {
   const frames = ea.getViewElements().filter(e => e.type === "frame" && !e.isDeleted);
   const frameIds = new Set(frames.map(f => f.id));
-  const arrows = ea.getViewElements().filter(e => 
-    e.type === "arrow" && !e.isDeleted && 
+  const arrows = ea.getViewElements().filter(e =>
+    e.type === "arrow" && !e.isDeleted &&
     frameIds.has(e.startBinding?.elementId) && frameIds.has(e.endBinding?.elementId)
   );
 
@@ -44,15 +96,15 @@ const initTreeData = () => {
     hasParent.add(c);
   });
 
-  const roots = frames.filter(f => !hasParent.has(f.id)).sort((a,b) => a.y - b.y);
+  const roots = frames.filter(f => !hasParent.has(f.id)).sort((a, b) => a.y - b.y);
   const data = [];
-  
+
   const traverse = (frame, depth) => {
     data.push({ id: frame.id, name: frame.name || "未命名", depth, collapsed: false });
     const children = (childrenMap.get(frame.id) || []).map(id => frames.find(f => f.id === id)).filter(Boolean);
-    children.sort((a,b) => a.y - b.y).forEach(c => traverse(c, depth + 1));
+    children.sort((a, b) => a.y - b.y).forEach(c => traverse(c, depth + 1));
   };
-  
+
   roots.forEach(r => traverse(r, 0));
   frames.forEach(f => { if (!data.find(d => d.id === f.id)) traverse(f, 0); });
   return data;
@@ -60,25 +112,41 @@ const initTreeData = () => {
 
 let treeData = initTreeData();
 
+const setArrowControlPoints = (arrow) => {
+  const endPoint = arrow.points?.[arrow.points.length - 1];
+  if (!endPoint) return;
+
+  const endX = endPoint[0];
+  const endY = endPoint[1];
+  const midX = Math.max(24, endX / 2);
+
+  arrow.points = [
+    [0, 0],
+    [midX, 0],
+    [midX, endY],
+    [endX, endY]
+  ];
+};
+
 // =====================================================================
 // === 2. 核心排版引擎 (自动绑定 + 拐角连线 + 自定义线条样式) ===
 // =====================================================================
 const syncToCanvas = async () => {
   state.suppressChange = true;
-  
+
   const allEls = api.getSceneElements();
   ea.clear();
-  
+
   const frameIds = new Set(treeData.map(t => t.id));
-  
+
   // 1. 获取所有的相关 Frame 装载进编辑队列
   const framesToEdit = allEls.filter(e => e.type === "frame" && frameIds.has(e.id) && !e.isDeleted);
   ea.copyViewElementsToEAforEditing(framesToEdit);
-  
+
   // 2. 清理旧连线及其记录
   const oldArrows = allEls.filter(e => e.type === "arrow" && !e.isDeleted && frameIds.has(e.startBinding?.elementId) && frameIds.has(e.endBinding?.elementId));
   const oldArrowIds = new Set(oldArrows.map(a => a.id));
-  
+
   if (oldArrows.length > 0) {
     ea.copyViewElementsToEAforEditing(oldArrows);
     oldArrows.forEach(a => ea.elementsDict[a.id].isDeleted = true);
@@ -86,13 +154,13 @@ const syncToCanvas = async () => {
 
   const frameMap = new Map();
   framesToEdit.forEach(f => {
-     const el = ea.elementsDict[f.id];
-     if (el.boundElements) {
-       el.boundElements = el.boundElements.filter(b => !oldArrowIds.has(b.id));
-     } else {
-       el.boundElements = [];
-     }
-     frameMap.set(f.id, el);
+    const el = ea.elementsDict[f.id];
+    if (el.boundElements) {
+      el.boundElements = el.boundElements.filter(b => !oldArrowIds.has(b.id));
+    } else {
+      el.boundElements = [];
+    }
+    frameMap.set(f.id, el);
   });
 
   // 3. 构建深度树，用于高度和坐标计算
@@ -106,19 +174,16 @@ const syncToCanvas = async () => {
     stack.push({ node, depth: item.depth });
   });
 
-  const GAP_X = 80;  // 节点水平间距
-  const GAP_Y = 40;  // 节点垂直间距
-
   const calcHeights = (node) => {
     const frame = frameMap.get(node.id);
     node.frameHeight = frame ? frame.height : 100;
     if (!node.children || node.children.length === 0) {
-      node.totalHeight = node.frameHeight + GAP_Y;
+      node.totalHeight = node.frameHeight + VERTICAL_GAP;
       return node.totalHeight;
     }
     let childrenHeightSum = 0;
     node.children.forEach(c => childrenHeightSum += calcHeights(c));
-    node.totalHeight = Math.max(node.frameHeight + GAP_Y, childrenHeightSum);
+    node.totalHeight = Math.max(node.frameHeight + VERTICAL_GAP, childrenHeightSum);
     return node.totalHeight;
   };
 
@@ -134,22 +199,22 @@ const syncToCanvas = async () => {
     const targetY = centerY - node.frameHeight / 2;
     const dx = targetX - frame.x;
     const dy = targetY - frame.y;
-    
+
     // 如果 Frame 有位移，不仅移动 Frame，还要移动它内部包含的所有子元素！
     if (dx !== 0 || dy !== 0) {
       frame.x += dx; frame.y += dy;
-      
+
       const innerEls = ea.getElementsInFrame(frame, allEls);
       innerEls.forEach(el => {
         if (!ea.elementsDict[el.id]) ea.copyViewElementsToEAforEditing([el]);
-        ea.elementsDict[el.id].x += dx; 
+        ea.elementsDict[el.id].x += dx;
         ea.elementsDict[el.id].y += dy;
       });
     }
 
     if (!node.children || node.children.length === 0) return;
 
-    const childX = targetX + frame.width + GAP_X;
+    const childX = targetX + frame.width + HORIZONTAL_GAP;
     const totalChildrenHeight = node.children.reduce((sum, c) => sum + c.totalHeight, 0);
     let currentY = centerY - totalChildrenHeight / 2;
 
@@ -170,14 +235,15 @@ const syncToCanvas = async () => {
     if (frame) setPositions(root, frame.x, frame.y + frame.height / 2);
   });
 
-  // 5. 【核心】先创建绑定箭头，再对新箭头二次覆写样式，避免 connectObjects 忽略部分配置
+  // 5. 【核心】先创建绑定箭头，再对新箭头二次覆写样式，并按导图参数重写控制点
   const arrowStyle = {
-    // strokeColor: "#808080",
-    strokeWidth: 4,
+    strokeColor: ARROW_STROKE_COLOR,
+    strokeWidth: ARROW_STROKE_WIDTH,
     strokeStyle: "solid",
     fillStyle: "solid",
     roughness: 0,
-    roundness: { type: 2 },
+    // elbowed: true,
+    roundness: null,
     startArrowhead: null,
     endArrowhead: "arrow"
   };
@@ -199,10 +265,11 @@ const syncToCanvas = async () => {
     const el = ea.elementsDict[id];
     if (el?.type !== "arrow") return;
     Object.assign(el, arrowStyle);
+    setArrowControlPoints(el);
   });
 
   await ea.addElementsToView(false, false);
-  
+
   setTimeout(() => { state.suppressChange = false; }, 300);
 };
 
@@ -212,7 +279,7 @@ const syncToCanvas = async () => {
 const INDENT_SIZE = 22;
 const state = {
   draggingId: null, dragIndex: -1, dragCount: 0, targetIndex: -1, targetDepth: 0, itemBounds: [],
-  suppressChange: false, unsub: null, renderTimer: 0 
+  suppressChange: false, unsub: null, renderTimer: 0
 };
 const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 const getBranchCount = (index, data) => {
@@ -223,7 +290,7 @@ const getBranchCount = (index, data) => {
 const hasChildren = (index, data) => index + 1 < data.length && data[index + 1].depth > data[index].depth;
 
 const root = document.createElement("div");
-root.id = ROOT_ID; 
+root.id = ROOT_ID;
 Object.assign(root.style, {
   position: "absolute", right: "20px", top: "60px", zIndex: "40",
   width: "320px", maxHeight: "550px",
@@ -305,7 +372,7 @@ const deleteFramesFromCanvas = async (idsToDeleteSet) => {
   state.suppressChange = true;
   const sceneElements = api.getSceneElements();
   const updated = sceneElements.map(el => {
-    if (idsToDeleteSet.has(el.id) || idsToDeleteSet.has(el.frameId)) return {...el, isDeleted: true};
+    if (idsToDeleteSet.has(el.id) || idsToDeleteSet.has(el.frameId)) return { ...el, isDeleted: true };
     return el;
   });
   api.updateScene({ elements: updated, commitToHistory: true });
@@ -316,22 +383,22 @@ const deleteFramesFromCanvas = async (idsToDeleteSet) => {
 };
 
 const render = (focusedId = null) => {
-  ulContainer.innerHTML = ""; 
-  let hideDepthLimit = null; 
+  ulContainer.innerHTML = "";
+  let hideDepthLimit = null;
 
   treeData.forEach((item, index) => {
     if (hideDepthLimit !== null) {
-      if (item.depth > hideDepthLimit) return; 
-      else hideDepthLimit = null; 
+      if (item.depth > hideDepthLimit) return;
+      else hideDepthLimit = null;
     }
     const isParent = hasChildren(index, treeData);
     if (item.collapsed && isParent) hideDepthLimit = item.depth;
 
     const li = document.createElement("li");
-    li.draggable = true; li.dataset.id = item.id; li.dataset.dataIndex = index; li.tabIndex = 0; 
-    
+    li.draggable = true; li.dataset.id = item.id; li.dataset.dataIndex = index; li.tabIndex = 0;
+
     Object.assign(li.style, {
-      padding: `4px 8px 4px ${12 + item.depth * INDENT_SIZE}px`, fontSize: "13px", display: "flex", 
+      padding: `4px 8px 4px ${12 + item.depth * INDENT_SIZE}px`, fontSize: "13px", display: "flex",
       alignItems: "center", cursor: "grab", color: "var(--text-normal, #1e293b)",
       outline: "none", borderRadius: "4px", margin: "0 4px", border: "1px solid transparent"
     });
@@ -343,7 +410,7 @@ const render = (focusedId = null) => {
       cursor: isParent ? "pointer" : "default", fontSize: isParent ? "10px" : "14px", transition: "background 0.1s"
     });
     toggle.innerHTML = isParent ? (item.collapsed ? "▶" : "▼") : "•";
-    
+
     if (isParent) {
       toggle.onclick = (e) => { e.stopPropagation(); item.collapsed = !item.collapsed; render(item.id); };
       toggle.onmouseenter = () => toggle.style.background = "var(--background-modifier-border, #e2e8f0)";
@@ -377,7 +444,7 @@ const render = (focusedId = null) => {
       });
     }));
     actions.appendChild(createBtn("↳", "添加子项", () => {
-      item.collapsed = false; 
+      item.collapsed = false;
       addNewFrameToCanvas("新建子节点", (newId) => {
         treeData.splice(index + 1, 0, { id: newId, name: "新建子节点", depth: item.depth + 1, collapsed: false });
       });
@@ -388,17 +455,17 @@ const render = (focusedId = null) => {
       deleteFramesFromCanvas(new Set(deleted.map(d => d.id)));
     }));
 
-    li.appendChild(toggle); li.appendChild(text); li.appendChild(actions); 
+    li.appendChild(toggle); li.appendChild(text); li.appendChild(actions);
 
     li.onfocus = () => { li.style.background = "var(--background-modifier-hover, #f1f5f9)"; };
     li.onblur = () => { li.style.background = "transparent"; };
-    li.onmouseenter = () => { 
-      if(!state.draggingId && document.activeElement !== li) li.style.background = "var(--background-modifier-hover, #f1f5f9)"; 
-      actions.style.opacity = "1"; 
+    li.onmouseenter = () => {
+      if (!state.draggingId && document.activeElement !== li) li.style.background = "var(--background-modifier-hover, #f1f5f9)";
+      actions.style.opacity = "1";
     };
-    li.onmouseleave = () => { 
-      if(document.activeElement !== li) li.style.background = "transparent"; 
-      actions.style.opacity = "0"; 
+    li.onmouseleave = () => {
+      if (document.activeElement !== li) li.style.background = "transparent";
+      actions.style.opacity = "0";
     };
 
     li.onkeydown = async (e) => {
@@ -408,13 +475,13 @@ const render = (focusedId = null) => {
         let changed = false;
         if (e.shiftKey) {
           if (item.depth > 0) {
-            for(let i = 0; i < branchCount; i++) treeData[index + i].depth -= 1;
+            for (let i = 0; i < branchCount; i++) treeData[index + i].depth -= 1;
             changed = true;
           }
         } else {
           const prevDepth = index > 0 ? treeData[index - 1].depth : -1;
           if (item.depth <= prevDepth) {
-            for(let i = 0; i < branchCount; i++) treeData[index + i].depth += 1;
+            for (let i = 0; i < branchCount; i++) treeData[index + i].depth += 1;
             changed = true;
           }
         }
@@ -423,7 +490,7 @@ const render = (focusedId = null) => {
     };
 
     li.ondragstart = (e) => {
-      state.draggingId = item.id; state.dragIndex = index; state.dragCount = getBranchCount(index, treeData); 
+      state.draggingId = item.id; state.dragIndex = index; state.dragCount = getBranchCount(index, treeData);
       e.dataTransfer.effectAllowed = "move";
       setTimeout(() => {
         ulContainer.querySelectorAll("li").forEach(node => {
@@ -462,7 +529,7 @@ scrollWrapper.ondragover = (e) => {
 
   let indicatorTop = referenceBound ? referenceBound.top : (state.itemBounds.length ? state.itemBounds[state.itemBounds.length - 1].bottom : 0);
   const indicatorLeft = 12 + 10 + finalDepth * INDENT_SIZE;
-  
+
   dropIndicator.style.display = "block"; dropIndicator.style.top = `${indicatorTop}px`; dropIndicator.style.left = `${indicatorLeft}px`; dropIndicator.style.width = `calc(100% - ${indicatorLeft + 12}px)`;
   state.targetIndex = insertDataIndex; state.targetDepth = finalDepth; state.prevVisibleDataIndex = prevVisibleDataIndex;
 };
@@ -471,7 +538,7 @@ scrollWrapper.ondrop = async (e) => {
   e.preventDefault(); dropIndicator.style.display = "none";
   if (state.targetIndex !== -1 && state.draggingId) {
     if (state.prevVisibleDataIndex >= 0 && state.targetDepth > treeData[state.prevVisibleDataIndex].depth) treeData[state.prevVisibleDataIndex].collapsed = false;
-    
+
     const branch = treeData.splice(state.dragIndex, state.dragCount);
     const depthDelta = state.targetDepth - branch[0].depth;
     branch.forEach(item => item.depth += depthDelta);
@@ -481,7 +548,7 @@ scrollWrapper.ondrop = async (e) => {
 
     treeData.splice(actualInsertIndex, 0, ...branch);
     await syncToCanvas();
-    render(state.draggingId); 
+    render(state.draggingId);
   }
   state.draggingId = null; state.targetIndex = -1;
 };
@@ -493,7 +560,7 @@ state.unsub = api.onChange(() => {
   state.renderTimer = setTimeout(() => {
     treeData = initTreeData();
     render();
-  }, 500); 
+  }, 500);
 });
 
 const cleanup = () => {
