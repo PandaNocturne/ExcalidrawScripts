@@ -234,11 +234,33 @@ Object.assign(root.style, {
 });
 
 const header = document.createElement("div");
-header.textContent = "Frame 导图大纲";
 Object.assign(header.style, {
-  padding: "12px", fontSize: "12px", fontWeight: "600",
+  padding: "12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px",
+  fontSize: "12px", fontWeight: "600",
   background: "var(--background-secondary, #f4f5f7)", borderBottom: "1px solid var(--background-modifier-border)"
 });
+
+const headerTitle = document.createElement("div");
+headerTitle.textContent = "Frame 导图大纲";
+
+const refreshBtn = document.createElement("div");
+refreshBtn.textContent = "🔄️";
+Object.assign(refreshBtn.style, {
+  padding: "2px 8px", borderRadius: "6px", cursor: "pointer", flexShrink: "0",
+  color: "var(--text-muted, #64748b)", border: "1px solid var(--background-modifier-border, #d4d4d8)",
+  background: "var(--background-primary, #ffffff)", fontSize: "12px", fontWeight: "500"
+});
+refreshBtn.onmouseenter = () => refreshBtn.style.background = "var(--background-modifier-hover, #f1f5f9)";
+refreshBtn.onmouseleave = () => refreshBtn.style.background = "var(--background-primary, #ffffff)";
+refreshBtn.onclick = async (e) => {
+  e.stopPropagation();
+  treeData = initTreeData();
+  await syncToCanvas();
+  render();
+};
+
+header.appendChild(headerTitle);
+header.appendChild(refreshBtn);
 
 const scrollWrapper = document.createElement("div");
 Object.assign(scrollWrapper.style, { flex: "1", overflowY: "auto", position: "relative", minHeight: "150px" });
