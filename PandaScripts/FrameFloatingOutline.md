@@ -46,7 +46,7 @@ const DEFAULT_CONFIG = {
   offsetX: 16,
   offsetY: 16,
   renumberSeparator: " ",
-  zoomLevel: 5,
+  zoomLevel: 1,
 };
 
 const loadConfig = () => {
