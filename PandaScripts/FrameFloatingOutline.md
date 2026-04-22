@@ -9,8 +9,8 @@
 - 与画布实时同步：frame 新增、删除、重命名都会刷新
 - 单击条目：仅高亮当前条目，不修改画布
 - 双击标题：原地编辑 frame 名称
-- 顺序按钮：按当前列表顺序为 frame 名称补 01、02、03 前缀
-- 支持拖拽排序：可直接拖动条目，仅调整悬浮大纲中的显示顺序，不移动 frame 本体也不修改名称
+- 顺序按钮：按大纲中当前的拖拽顺序，为 frame 名称重新分配 01、02、03 前缀（即保存排序）
+- 支持拖拽排序：拖动时仅调整视觉顺序，只有点击顺序按钮才会真正修改名称保存
 - 支持拖拽右下角：调整大纲面板宽高并持久保存
 
 ```javascript
@@ -45,7 +45,6 @@ const DEFAULT_CONFIG = {
   side: "right",
   offsetX: 16,
   offsetY: 16,
-  autoNumberOnDrop: true,
   renumberSeparator: " ",
   zoomLevel: 5,
 };
@@ -59,7 +58,6 @@ const loadConfig = () => {
     side: saved.side === "left" ? "left" : DEFAULT_CONFIG.side,
     offsetX: Number(saved.offsetX ?? DEFAULT_CONFIG.offsetX),
     offsetY: Number(saved.offsetY ?? DEFAULT_CONFIG.offsetY),
-    autoNumberOnDrop: saved.autoNumberOnDrop ?? DEFAULT_CONFIG.autoNumberOnDrop,
     renumberSeparator:
       typeof saved.renumberSeparator === "string"
         ? saved.renumberSeparator
@@ -78,9 +76,7 @@ const saveConfig = () => {
     side: CONFIG.side,
     offsetX: CONFIG.offsetX,
     offsetY: CONFIG.offsetY,
-    autoNumberOnDrop: CONFIG.autoNumberOnDrop,
     renumberSeparator: CONFIG.renumberSeparator,
-    // zoomLevel: CONFIG.zoomLevel,
   };
   ea.setScriptSettings?.(settings);
 };
@@ -226,17 +222,17 @@ const makeButton = (label, tip) => {
   return btn;
 };
 
-const renumberBtn = makeButton("🔢", "仅按已排序区当前顺序补 01、02、03 前缀");
+const renumberBtn = makeButton("🔢", "确认保存排序 (将当前顺序写入到 Frame 本体名称中)");
 const refreshBtn = makeButton("🔄", "手动刷新大纲");
 const closeBtn = makeButton("✖", "关闭悬浮大纲");
 
 const list = document.createElement("div");
 Object.assign(list.style, {
   overflow: "auto",
-  padding: "8px",
+  padding: "6px", // 减小外边距
   display: "flex",
   flexDirection: "column",
-  gap: "8px",
+  gap: "4px", // 减小大区之间的间距
   flex: "1",
 });
 
@@ -244,15 +240,15 @@ const sortedList = document.createElement("div");
 Object.assign(sortedList.style, {
   display: "flex",
   flexDirection: "column",
-  gap: "6px",
+  gap: "4px", // 减小条目间的间距
 });
 
 const unsortedList = document.createElement("div");
 Object.assign(unsortedList.style, {
   display: "none",
   flexDirection: "column",
-  gap: "6px",
-  paddingTop: "8px",
+  gap: "4px", // 减小条目间的间距
+  paddingTop: "6px", // 减小上内边距
   marginTop: "2px",
   borderTop: `1px dashed ${cssVar("--background-modifier-border", "#d4d4d8")}`,
 });
@@ -263,7 +259,7 @@ list.appendChild(unsortedList);
 const empty = document.createElement("div");
 empty.textContent = "当前画板没有 frame";
 Object.assign(empty.style, {
-  padding: "18px 12px",
+  padding: "12px", // 减小空状态间距
   color: cssVar("--text-muted", "#666"),
   textAlign: "center",
   display: "none",
@@ -419,13 +415,8 @@ const reorderFrames = async (dragId, dropId, direction) => {
     .map((frame) => frame.id);
   state.orderedFrameIds = [...items, ...trailingIds].filter((id) => frameMap.has(id));
   
-  // FIX: 根据配置自动更新名称前缀，保证重排序后序号是对的
-  if (CONFIG.autoNumberOnDrop) {
-    const newOrganized = items.map(id => frameMap.get(id));
-    await renumberFrames(newOrganized);
-  } else {
-    render();
-  }
+  // 变更 2: 不再调用自动重命名，仅刷新渲染面板
+  render();
 };
 
 const moveFrameToSortedZone = async (dragId, position = "end") => {
@@ -444,15 +435,11 @@ const moveFrameToSortedZone = async (dragId, position = "end") => {
     .map((frame) => frame.id);
   state.orderedFrameIds = [...items, ...trailingIds].filter((id) => frameMap.has(id));
   
-  // FIX: 强制为刚拖进来的 Frame 添加数字前缀，否则下次渲染又被踢出排序区
-  if (CONFIG.autoNumberOnDrop) {
-    const newOrganized = items.map(id => frameMap.get(id));
-    await renumberFrames(newOrganized);
-  } else {
-    const dragFrame = frameMap.get(dragId);
-    const newName = formatOrderedName(insertIndex, dragFrame.name);
-    await updateFrameNames(new Map([[dragId, newName]]));
-  }
+  // 变更 3: 拖入排序区时，一律为其分配 00 前缀，等待之后手动统一重新排序
+  const dragFrame = frameMap.get(dragId);
+  const baseName = stripOrderPrefix(dragFrame.name) || "Frame";
+  const newName = `00${CONFIG.renumberSeparator}${baseName}`;
+  await updateFrameNames(new Map([[dragId, newName]]));
 };
 
 const moveFrameToUnsortedZone = async (dragId, position = "end") => {
@@ -469,27 +456,12 @@ const moveFrameToUnsortedZone = async (dragId, position = "end") => {
   unorganizedIds.splice(insertIndex, 0, dragId);
   state.orderedFrameIds = [...organizedIds, ...unorganizedIds].filter((id) => frameMap.has(id));
 
-  // 剥离原有的排序前缀
+  // 移出排序区时仅剥离前缀，不再牵连重排其它元素
   const strippedName = stripOrderPrefix(dragFrame.name);
   const nextName = strippedName || "Frame";
   
-  const nameMap = new Map();
   if (nextName !== String(dragFrame.name || "")) {
-    nameMap.set(dragId, nextName);
-  }
-
-  // FIX: 如果移出了排序区，需重新更新排序区中剩余成员的序号
-  if (CONFIG.autoNumberOnDrop) {
-    organizedIds.forEach((id, index) => {
-      const f = frameMap.get(id);
-      if (f) {
-        nameMap.set(id, formatOrderedName(index, f.name));
-      }
-    });
-  }
-
-  if (nameMap.size > 0) {
-    await updateFrameNames(nameMap);
+    await updateFrameNames(new Map([[dragId, nextName]]));
   } else {
     render();
   }
@@ -511,9 +483,9 @@ const renderItem = (frame, options = {}) => {
   Object.assign(item.style, {
     display: "flex",
     flexDirection: "column",
-    gap: "6px",
-    padding: "8px",
-    borderRadius: cssVar("--radius-s", "10px"),
+    gap: "4px", // 变更 1: 减小内部行距
+    padding: "5px 8px", // 变更 1: 减小上下内边距
+    borderRadius: cssVar("--radius-s", "8px"),
     border: `1px solid ${cssVar("--background-modifier-border", "#d4d4d8")}`,
     background: cssVar("--background-primary-alt", "#f8f9fb"),
     cursor: "default",
@@ -526,7 +498,7 @@ const renderItem = (frame, options = {}) => {
   Object.assign(topLine.style, {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "6px", // 变更 1: 减小水平间距
   });
 
   const indexBadge = document.createElement("div");
@@ -582,8 +554,8 @@ const renderItem = (frame, options = {}) => {
       border: `1px solid ${cssVar("--interactive-accent", "#6b8cff")}`,
       background: cssVar("--background-primary", "#ffffff"),
       color: cssVar("--text-normal", "#222222"),
-      borderRadius: cssVar("--button-radius", "8px"),
-      padding: "6px 8px",
+      borderRadius: cssVar("--button-radius", "6px"),
+      padding: "4px 6px",
       outline: "none",
       minWidth: "0",
     });
@@ -689,9 +661,19 @@ const renderItem = (frame, options = {}) => {
 
     item.addEventListener("dragend", () => {
       item.style.opacity = "1";
+      item.style.boxShadow = "none";
       state.dragId = null;
       state.dropId = null;
       state.dropDirection = null;
+      
+      sortedList.style.background = "transparent";
+      sortedList.style.outline = "none";
+      sortedList.style.outlineOffset = "0";
+
+      unsortedList.style.background = "transparent";
+      unsortedList.style.outline = "none";
+      unsortedList.style.outlineOffset = "0";
+
       render();
     });
   }
@@ -700,22 +682,19 @@ const renderItem = (frame, options = {}) => {
     item.addEventListener("dragover", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      event.dataTransfer.dropEffect = "move"; // FIX: 确保所有环境都允许放置
+      event.dataTransfer.dropEffect = "move";
       const rect = item.getBoundingClientRect();
       const ratio = (event.clientY - rect.top) / Math.max(rect.height, 1);
       state.dropId = frame.id;
       state.dropDirection = ratio < 0.5 ? "before" : "after";
-      item.style.borderTop = state.dropDirection === "before"
-        ? `2px solid ${cssVar("--interactive-accent", "#6b8cff")}`
-        : `1px solid ${cssVar("--background-modifier-border", "#d4d4d8")}`;
-      item.style.borderBottom = state.dropDirection === "after"
-        ? `2px solid ${cssVar("--interactive-accent", "#6b8cff")}`
-        : `1px solid ${cssVar("--background-modifier-border", "#d4d4d8")}`;
+      
+      item.style.boxShadow = state.dropDirection === "before"
+        ? `inset 0 3px 0 0 ${cssVar("--interactive-accent", "#6b8cff")}`
+        : `inset 0 -3px 0 0 ${cssVar("--interactive-accent", "#6b8cff")}`;
     });
 
     item.addEventListener("dragleave", (event) => {
-      item.style.borderTop = `1px solid ${cssVar("--background-modifier-border", "#d4d4d8")}`;
-      item.style.borderBottom = `1px solid ${cssVar("--background-modifier-border", "#d4d4d8")}`;
+      item.style.boxShadow = "none";
       if (!item.contains(event.relatedTarget) && state.dropId === frame.id) {
         clearDropState();
       }
@@ -724,8 +703,7 @@ const renderItem = (frame, options = {}) => {
     item.addEventListener("drop", async (event) => {
       event.preventDefault();
       event.stopPropagation();
-      item.style.borderTop = `1px solid ${cssVar("--background-modifier-border", "#d4d4d8")}`;
-      item.style.borderBottom = `1px solid ${cssVar("--background-modifier-border", "#d4d4d8")}`;
+      item.style.boxShadow = "none";
       const dragId = state.dragId;
       const dropId = frame.id;
       const direction = state.dropDirection || "after";
@@ -744,7 +722,7 @@ const renderItem = (frame, options = {}) => {
         if (dragIsSorted) {
           await reorderFrames(dragId, dropId, direction);
         } else {
-          // FIX: 未排序拖入已排序，同步修改名称
+          // 未排序拖入已排序中的某个元素之间
           const frameMap = new Map(allFrames.map((item) => [item.id, item]));
           if (!frameMap.has(dragId) || !frameMap.has(dropId)) {
             state.dragId = null;
@@ -770,14 +748,11 @@ const renderItem = (frame, options = {}) => {
             .map((item) => item.id);
           state.orderedFrameIds = [...sortedIds, ...trailingIds].filter((id) => frameMap.has(id));
           
-          if (CONFIG.autoNumberOnDrop) {
-            const newOrganized = sortedIds.map(id => frameMap.get(id));
-            await renumberFrames(newOrganized);
-          } else {
-            const dragFrame = frameMap.get(dragId);
-            const newName = formatOrderedName(insertIndex, dragFrame.name);
-            await updateFrameNames(new Map([[dragId, newName]]));
-          }
+          // 统一给 00 前缀
+          const dragFrame = frameMap.get(dragId);
+          const baseName = stripOrderPrefix(dragFrame.name) || "Frame";
+          const newName = `00${CONFIG.renumberSeparator}${baseName}`;
+          await updateFrameNames(new Map([[dragId, newName]]));
         }
       } else {
         await moveFrameToUnsortedZone(dragId, direction === "before" ? "start" : "end");
@@ -794,6 +769,8 @@ const renderItem = (frame, options = {}) => {
 
 const render = () => {
   if (state.disposed) return;
+  if (state.dragId) return; 
+  
   if (state.raf) cancelAnimationFrame(state.raf);
   state.raf = requestAnimationFrame(() => {
     state.raf = 0;
@@ -819,8 +796,8 @@ const render = () => {
       const sortedDropHint = document.createElement("div");
       sortedDropHint.textContent = "拖到这里加入已排序区";
       Object.assign(sortedDropHint.style, {
-        padding: "10px 12px",
-        borderRadius: cssVar("--radius-s", "10px"),
+        padding: "8px 12px",
+        borderRadius: cssVar("--radius-s", "8px"),
         border: `1px dashed ${cssVar("--background-modifier-border", "#d4d4d8")}`,
         color: cssVar("--text-muted", "#666"),
         textAlign: "center",
@@ -833,8 +810,8 @@ const render = () => {
       const unsortedDropHint = document.createElement("div");
       unsortedDropHint.textContent = "拖到这里移出已排序区";
       Object.assign(unsortedDropHint.style, {
-        padding: "10px 12px",
-        borderRadius: cssVar("--radius-s", "10px"),
+        padding: "8px 12px",
+        borderRadius: cssVar("--radius-s", "8px"),
         border: `1px dashed ${cssVar("--background-modifier-border", "#d4d4d8")}`,
         color: cssVar("--text-muted", "#666"),
         textAlign: "center",
@@ -897,7 +874,7 @@ sortedList.addEventListener("dragover", (event) => {
   if (!state.dragId) return;
   event.preventDefault();
   event.stopPropagation();
-  event.dataTransfer.dropEffect = "move"; // FIX: 兼容增强
+  event.dataTransfer.dropEffect = "move"; 
   if (state.dropId) return;
   updateSortedListDropState(event);
 });
@@ -935,7 +912,7 @@ unsortedList.addEventListener("dragover", (event) => {
   if (!state.dragId) return;
   event.preventDefault();
   event.stopPropagation();
-  event.dataTransfer.dropEffect = "move"; // FIX: 兼容增强
+  event.dataTransfer.dropEffect = "move"; 
   if (state.dropId) return;
   updateUnsortedListDropState(event);
 });
@@ -1086,4 +1063,4 @@ state.unsub = api.onChange(() => {
 registry.set(container, { cleanup });
 render();
 
-new Notice("Frame 悬浮大纲已开启");
+new Notice("Frame 悬浮大纲已更新 (紧凑排版 + 手动重排模式)");
