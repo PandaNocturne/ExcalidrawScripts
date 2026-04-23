@@ -142,7 +142,7 @@ const getOrderedFrames = (frames = getFrames()) => {
   return ordered;
 };
 
-const ORDERED_NAME_PATTERN = /^\s*\d{2,}[._\-\s、]+/;
+const ORDERED_NAME_PATTERN = /^\s*\d+(\.\d+)*[._\-\s、]+/;
 
 const isOrderedFrameName = (name) => ORDERED_NAME_PATTERN.test(String(name || ""));
 
@@ -333,7 +333,7 @@ const normalizeFrameName = (name, fallbackIndex) => {
 
 const stripOrderPrefix = (name) =>
   String(name || "")
-    .replace(/^\s*\d{2,}[._\-\s、]+/, "")
+    .replace(/^\s*\d+(\.\d+)*[._\-\s、]+/, "")
     .trim();
 
 const formatOrderedName = (index, name) => {

@@ -43,39 +43,6 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
   - ![24.09.08_Excalidraw Script Install Market：轻松管理和获取 Excalidraw 脚本.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409080913130.png)
   - ![24.09.08_Excalidraw Script Install Market：轻松管理和获取 Excalidraw 脚本.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409080914341.png)
 
-### QuickSwitchFrame
-
-```excalidraw-script-install
-https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/QuickSwitchFrame.md
-```
-
-- Author：熊猫别熬夜
-- PKMerDoc：[自定义 Excalidraw 脚本 -QuickSwitchFrame- 简单的 Frame 切换大纲](https://pkmer.cn/show/20240311180729)
-- Description：提供一个 Frame 边框切换的提示框。
-  - ![File-20240426045317691.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318594.gif)
-
-### FrameAutoSize
-
-```excalidraw-script-install
-https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FrameAutoSize.md
-```
-
-- Author：熊猫别熬夜
-- Doc：null
-- Description：将“frame”的大小和位置自适应到其中包含的元素。
-  - ![24.06.18_Excalidraw脚本-Frame框架自适应大小.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409091251983.gif)
-
-### FrameFloatingOutline
-
-```excalidraw-script-install
-https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FrameFloatingOutline.md
-```
-
-- Author：熊猫别熬夜
-- Description：为当前 Excalidraw 视图提供可开关的悬浮 Frame 大纲，支持定位、重命名、拖拽排序、删除 Frame 及其内部元素，并可调整面板尺寸与位置。
-  - 支持按已排序区 / 未排序区展示 Frame
-  - 支持点击条目聚焦、编辑名称、删除整个 Frame 及内部元素
-  - 删除操作会写入 Excalidraw 历史，可通过 `Ctrl+Z` 撤回
 
 ### ExcalidrawMinimap
 
@@ -295,6 +262,49 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - PKMerDoc：待写
 - Description：采用 [Remove.bg](https://www.remove.bg/zh/g/developers) 的 API 来对 Excalidraw 中的图片进行抠图。
   - ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302659.png!pkmer)
+
+## Frame 相关
+
+### QuickSwitchFrame
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/QuickSwitchFrame.md
+```
+
+- Author：熊猫别熬夜
+- PKMerDoc：[自定义 Excalidraw 脚本 -QuickSwitchFrame- 简单的 Frame 切换大纲](https://pkmer.cn/show/20240311180729)
+- Description：提供一个 Frame 边框切换的提示框。
+  - ![File-20240426045317691.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318594.gif)
+
+### FrameAutoSize
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FrameAutoSize.md
+```
+
+- Author：熊猫别熬夜
+- Doc：null
+- Description：将“frame”的大小和位置自适应到其中包含的元素。
+  - ![24.06.18_Excalidraw脚本-Frame框架自适应大小.md](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202409091251983.gif)
+
+### FrameFloatingOutline
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FrameFloatingOutline.md
+```
+
+- Author：熊猫别熬夜
+- Description：为当前 Excalidraw 视图提供可开关的悬浮 Frame 大纲，支持定位、重命名、拖拽排序、删除 Frame 及其内部元素，并可调整面板尺寸与位置。
+
+### FrameListMindmapLayoutTool
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/FrameListMindmapLayoutTool.md
+```
+
+- Author：熊猫别熬夜
+- Description：**FrameListMindmapLayoutTool** 是一个功能强大的 Excalidraw 脚本，专门用于管理和布局 Frame（框架）元素，将其转换为可视化的大纲导图结构。该工具提供了完整的 Frame 树形结构管理、自动布局、手动层级编号等功能。
+
 
 ## 画布演示
 
