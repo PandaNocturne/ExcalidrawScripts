@@ -3,7 +3,8 @@
 - 样式更新：全自动生成原生 Elbow 拐角连线，强制锁定左右边缘锚点。
 - 节点操作：支持节点同步删除，双击大纲聚焦当前节点及其子树。
 - 核心逻辑：手动层级编号 (1, 1.1, 1.2.1)，点击按钮时执行，不干扰正常编辑。
-- 界面升级：支持拖拽顶部栏改变面板位置，拖拽右下角调整界面宽高度；按键极简化。
+- 界面升级：支持拖拽顶部栏改变面板位置，拖拽右下角调整界面宽高度，并限制了边界和最小宽高。
+- 配置存储：布局设置和视窗尺寸位置使用 ea 脚本配置接口保存。
 - 稳定性修复：已修复新建节点时因缺少默认渲染属性导致的画布布局崩溃问题。
 */
 
@@ -19,7 +20,7 @@ if (!container) {
 // --- 0. 防多开与清理 ---
 const ROOT_ID = "ea-frame-list-mindmap-layout-tool";
 const GLOBAL_KEY = "__eaFrameListMindmapLayoutTool__";
-const SETTINGS_STORAGE_KEY = "ea-frame-list-mindmap-layout-settings";
+const SETTINGS_KEY = "ea-frame-list-mindmap-layout-settings";
 const COLLAPSED_STATE_KEY = "__eaFrameOutlineMindmapCollapsed__";
 
 const registry = window[GLOBAL_KEY] ||= new WeakMap();
@@ -36,6 +37,10 @@ new Notice("打开 Frame 导图大纲");
 const DEFAULT_LAYOUT_SETTINGS = {
   horizontalGap: 80,
   verticalGap: 40,
+  width: 320,
+  height: 500,
+  left: -1,
+  top: 60,
 };
 const ARROW_STROKE_COLOR = "#808080";
 const ARROW_STROKE_WIDTH = 4;
@@ -45,25 +50,32 @@ const sanitizeNumber = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
-const loadLayoutSettings = () => {
+// 【变更】使用 ea 设置替代 localStorage
+const loadConfig = () => {
   try {
-    const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_LAYOUT_SETTINGS };
-    const parsed = JSON.parse(raw);
+    const settings = ea.getScriptSettings?.() || {};
+    const saved = settings[SETTINGS_KEY] || {};
     return {
-      horizontalGap: sanitizeNumber(parsed?.horizontalGap, DEFAULT_LAYOUT_SETTINGS.horizontalGap),
-      verticalGap: sanitizeNumber(parsed?.verticalGap, DEFAULT_LAYOUT_SETTINGS.verticalGap),
+      horizontalGap: sanitizeNumber(saved.horizontalGap, DEFAULT_LAYOUT_SETTINGS.horizontalGap),
+      verticalGap: sanitizeNumber(saved.verticalGap, DEFAULT_LAYOUT_SETTINGS.verticalGap),
+      width: sanitizeNumber(saved.width, DEFAULT_LAYOUT_SETTINGS.width),
+      height: sanitizeNumber(saved.height, DEFAULT_LAYOUT_SETTINGS.height),
+      left: sanitizeNumber(saved.left, DEFAULT_LAYOUT_SETTINGS.left),
+      top: sanitizeNumber(saved.top, DEFAULT_LAYOUT_SETTINGS.top),
     };
   } catch {
     return { ...DEFAULT_LAYOUT_SETTINGS };
   }
 };
 
-const saveLayoutSettings = (nextSettings) => {
-  window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+const saveConfig = (nextConfig) => {
+  const settings = ea.getScriptSettings?.() || {};
+  settings[SETTINGS_KEY] = { ...CONFIG, ...nextConfig };
+  ea.setScriptSettings?.(settings);
+  Object.assign(CONFIG, nextConfig);
 };
 
-let layoutSettings = loadLayoutSettings();
+let CONFIG = loadConfig();
 
 // --- 1. 画布数据解析引擎 (Canvas -> UI) ---
 const initTreeData = () => {
@@ -182,8 +194,8 @@ const duplicateBranchToCanvas = async (index, { includeChildren = false } = {}) 
 // =====================================================================
 const syncToCanvas = async () => {
   state.suppressChange = true;
-  const horizontalGap = sanitizeNumber(layoutSettings.horizontalGap, DEFAULT_LAYOUT_SETTINGS.horizontalGap);
-  const verticalGap = sanitizeNumber(layoutSettings.verticalGap, DEFAULT_LAYOUT_SETTINGS.verticalGap);
+  const horizontalGap = sanitizeNumber(CONFIG.horizontalGap, DEFAULT_LAYOUT_SETTINGS.horizontalGap);
+  const verticalGap = sanitizeNumber(CONFIG.verticalGap, DEFAULT_LAYOUT_SETTINGS.verticalGap);
   const allEls = api.getSceneElements();
   ea.clear();
 
@@ -299,7 +311,6 @@ const getBranchCount = (index, data) => {
 };
 const hasChildren = (index, data) => index + 1 < data.length && data[index + 1].depth > data[index].depth;
 
-// [手动编号逻辑]
 const applyManualNumbering = () => {
   let counters = [];
   let changed = false;
@@ -308,9 +319,7 @@ const applyManualNumbering = () => {
     counters.splice(d + 1);
     counters[d] = (counters[d] || 0) + 1;
 
-    // 生成形如 1.2.1 的编号
     const numStr = counters.slice(0, d + 1).join('.');
-    // 匹配并清理已存在的旧层级前缀
     const cleanName = item.name.replace(/^(\d+(?:\.\d+)*)\s+/, '');
     const newName = `${numStr} ${cleanName}`;
 
@@ -382,25 +391,31 @@ const createIconButton = (text, title, onClick) => {
 
 const root = document.createElement("div");
 root.id = ROOT_ID;
+
+// 【变更】取消 CSS resize，依靠自定义大小调整手柄，应用配置宽高
 Object.assign(root.style, {
   position: "absolute",
-  right: "20px",
-  top: "60px",
   zIndex: "40",
-  width: "320px",
-  height: "500px",
-  minWidth: "200px",
-  minHeight: "150px",
+  width: `${Math.max(200, CONFIG.width)}px`,
+  height: `${Math.max(150, CONFIG.height)}px`,
   background: "var(--background-primary, #ffffff)",
   border: "1px solid var(--background-modifier-border, #d4d4d8)",
   borderRadius: "8px",
   boxShadow: "var(--shadow-s)",
   display: "flex",
   flexDirection: "column",
-  resize: "both",
   overflow: "hidden",
   userSelect: "none",
 });
+
+if (CONFIG.left !== -1) {
+  root.style.left = `${CONFIG.left}px`;
+  root.style.right = "auto";
+} else {
+  root.style.right = "20px";
+  root.style.left = "auto";
+}
+root.style.top = `${CONFIG.top}px`;
 
 const header = document.createElement("div");
 Object.assign(header.style, {
@@ -413,37 +428,59 @@ Object.assign(header.style, {
   fontWeight: "600",
   background: "var(--background-secondary, #f4f5f7)",
   borderBottom: "1px solid var(--background-modifier-border)",
-  cursor: "move",
+  cursor: "grab",
 });
 
-let isDraggingUI = false;
-let startDragX, startDragY;
+// 【变更】增加基于边界检测的 header 拖拽逻辑
+let dragMove = null;
+let dragUp = null;
 
-header.onmousedown = (e) => {
+const dragCleanup = () => {
+  if (dragMove) window.removeEventListener("pointermove", dragMove);
+  if (dragUp) window.removeEventListener("pointerup", dragUp);
+  dragMove = null;
+  dragUp = null;
+};
+
+header.addEventListener("pointerdown", (e) => {
   if (e.target !== header && e.target !== headerTitle) return;
-  isDraggingUI = true;
-  startDragX = e.clientX;
-  startDragY = e.clientY;
+  e.preventDefault();
+  e.stopPropagation();
 
+  const startX = e.clientX;
+  const startY = e.clientY;
   const rect = root.getBoundingClientRect();
-  const parentRect = root.parentElement.getBoundingClientRect();
-  root.style.right = 'auto';
-  root.style.bottom = 'auto';
-  root.style.left = (rect.left - parentRect.left) + "px";
-  root.style.top = (rect.top - parentRect.top) + "px";
-};
+  const containerRect = container.getBoundingClientRect();
+  const originLeft = rect.left - containerRect.left;
+  const originTop = rect.top - containerRect.top;
+  header.style.cursor = "grabbing";
 
-const onMouseMoveUI = (e) => {
-  if (!isDraggingUI) return;
-  const currentLeft = parseFloat(root.style.left) || 0;
-  const currentTop = parseFloat(root.style.top) || 0;
-  root.style.left = (currentLeft + e.movementX) + "px";
-  root.style.top = (currentTop + e.movementY) + "px";
-};
+  dragMove = (moveEvent) => {
+    const width = root.offsetWidth;
+    const height = root.offsetHeight;
+    const maxLeft = Math.max(0, containerRect.width - width);
+    const maxTop = Math.max(0, containerRect.height - height);
 
-const onMouseUpUI = () => { isDraggingUI = false; };
-document.addEventListener("mousemove", onMouseMoveUI);
-document.addEventListener("mouseup", onMouseUpUI);
+    const nextLeft = clamp(originLeft + (moveEvent.clientX - startX), 0, maxLeft);
+    const nextTop = clamp(originTop + (moveEvent.clientY - startY), 0, maxTop);
+
+    root.style.left = `${nextLeft}px`;
+    root.style.top = `${nextTop}px`;
+    root.style.right = "auto";
+
+    CONFIG.left = nextLeft;
+    CONFIG.top = nextTop;
+  };
+
+  dragUp = () => {
+    header.style.cursor = "grab";
+    saveConfig({ left: CONFIG.left, top: CONFIG.top });
+    dragCleanup();
+  };
+
+  window.addEventListener("pointermove", dragMove);
+  window.addEventListener("pointerup", dragUp, { once: true });
+});
 
 const headerTitle = document.createElement("div");
 headerTitle.textContent = "导图大纲";
@@ -465,10 +502,10 @@ const makeSettingRow = (labelText, inputEl) => { const label = document.createEl
 makeSettingRow("水平间距", horizontalGapInput); makeSettingRow("垂直间距", verticalGapInput);
 settingsPanel.appendChild(settingsGrid);
 
-const syncSettingsInputs = () => { horizontalGapInput.value = String(layoutSettings.horizontalGap); verticalGapInput.value = String(layoutSettings.verticalGap); };
+const syncSettingsInputs = () => { horizontalGapInput.value = String(CONFIG.horizontalGap); verticalGapInput.value = String(CONFIG.verticalGap); };
 const applySettingsFromInputs = async () => {
   const nextSettings = { horizontalGap: sanitizeNumber(horizontalGapInput.value, DEFAULT_LAYOUT_SETTINGS.horizontalGap), verticalGap: sanitizeNumber(verticalGapInput.value, DEFAULT_LAYOUT_SETTINGS.verticalGap) };
-  layoutSettings = nextSettings; saveLayoutSettings(nextSettings); syncSettingsInputs(); await syncToCanvas(); render();
+  saveConfig(nextSettings); syncSettingsInputs(); await syncToCanvas(); render();
 };
 horizontalGapInput.onchange = applySettingsFromInputs; verticalGapInput.onchange = applySettingsFromInputs;
 
@@ -512,18 +549,80 @@ const dot = document.createElement("div");
 Object.assign(dot.style, { position: "absolute", left: "-4px", top: "-3px", width: "8px", height: "8px", borderRadius: "50%", background: "var(--interactive-accent, #2563eb)", border: "2px solid var(--background-primary, #fff)" });
 dropIndicator.appendChild(dot);
 
+// 【变更】自定义尺寸缩放手柄，处理防溢出
+const resizeHandle = document.createElement("div");
+resizeHandle.title = "拖拽调整面板大小";
+Object.assign(resizeHandle.style, {
+  position: "absolute",
+  right: "0",
+  bottom: "0",
+  width: "18px",
+  height: "18px",
+  cursor: "nwse-resize",
+  background: "linear-gradient(135deg, transparent 0 48%, var(--background-modifier-border, #d4d4d8) 48% 56%, transparent 56% 64%, var(--background-modifier-border, #d4d4d8) 64% 72%, transparent 72%)",
+  opacity: "0.85",
+  zIndex: "50",
+});
+
+let resizeMove = null;
+let resizeUp = null;
+
+const resizeCleanup = () => {
+  if (resizeMove) window.removeEventListener("pointermove", resizeMove);
+  if (resizeUp) window.removeEventListener("pointerup", resizeUp);
+  resizeMove = null;
+  resizeUp = null;
+};
+
+resizeHandle.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const rect = root.getBoundingClientRect();
+  const containerRect = container.getBoundingClientRect();
+  const originWidth = rect.width;
+  const originHeight = rect.height;
+  const originLeft = rect.left - containerRect.left;
+  const originTop = rect.top - containerRect.top;
+
+  // 保证不仅不会小于最小值，放大时也不会超过容器剩余空间
+  const maxWidth = Math.max(400, containerRect.width - originLeft);
+  const maxHeight = Math.max(300, containerRect.height - originTop);
+
+  resizeMove = (moveEvent) => {
+    const nextWidth = clamp(originWidth + (moveEvent.clientX - startX), 200, maxWidth);
+    const nextHeight = clamp(originHeight + (moveEvent.clientY - startY), 150, maxHeight);
+
+    CONFIG.width = nextWidth;
+    CONFIG.height = nextHeight;
+    root.style.width = `${nextWidth}px`;
+    root.style.height = `${nextHeight}px`;
+  };
+
+  resizeUp = () => {
+    saveConfig({ width: CONFIG.width, height: CONFIG.height });
+    resizeCleanup();
+  };
+
+  window.addEventListener("pointermove", resizeMove);
+  window.addEventListener("pointerup", resizeUp, { once: true });
+});
+
 scrollWrapper.appendChild(ulContainer);
 scrollWrapper.appendChild(dropIndicator);
 root.appendChild(header);
 root.appendChild(settingsPanel);
 root.appendChild(scrollWrapper);
+root.appendChild(resizeHandle);
 container.appendChild(root);
 syncSettingsInputs();
 
 const cleanup = () => {
   if (state.unsub) state.unsub();
-  document.removeEventListener("mousemove", onMouseMoveUI);
-  document.removeEventListener("mouseup", onMouseUpUI);
+  dragCleanup();
+  resizeCleanup();
   root.remove();
   registry.delete(container);
 };
