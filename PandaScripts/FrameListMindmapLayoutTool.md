@@ -42,7 +42,7 @@ const DEFAULT_LAYOUT_SETTINGS = {
   left: -1,
   top: 60,
 };
-const ARROW_STROKE_COLOR = "#808080";
+const ARROW_STROKE_COLOR = "#1e1e1e";
 const ARROW_STROKE_WIDTH = 4;
 
 const sanitizeNumber = (value, fallback) => {
@@ -133,9 +133,9 @@ async function openEditPrompt(ocrText, n = 10) {
     if (res === null) return { confirmed: false, ocrTextEdit: ocrText };
     return { confirmed: true, ocrTextEdit: res };
   }
-  const ocrTextEdit = await utils.inputPrompt("编辑文本", "修改 Frame 标题", ocrText, undefined, n, true);
-  if (ocrTextEdit === null || typeof ocrTextEdit === "undefined") return { confirmed: false, ocrTextEdit: ocrText };
-  return { confirmed: true, ocrTextEdit: ocrTextEdit === " " ? "" : ocrTextEdit };
+  const frameNameEditor = await utils.inputPrompt("编辑FrameName", "修改 Frame 标题", ocrText, undefined, n, true);
+  if (frameNameEditor === null || typeof frameNameEditor === "undefined") return { confirmed: false, ocrTextEdit: ocrText };
+  return { confirmed: true, ocrTextEdit: frameNameEditor === " " ? "" : frameNameEditor };
 }
 
 const getBranchItems = (index, data = treeData) => data.slice(index, index + getBranchCount(index, data));
@@ -483,7 +483,7 @@ header.addEventListener("pointerdown", (e) => {
 });
 
 const headerTitle = document.createElement("div");
-headerTitle.textContent = "导图大纲";
+headerTitle.textContent = "Frame 导图大纲";
 
 const headerActions = document.createElement("div");
 Object.assign(headerActions.style, { display: "flex", alignItems: "center", gap: "10px" });
@@ -731,7 +731,7 @@ const render = (focusedId = null) => {
       return btn;
     };
 
-    actions.appendChild(createBtn("✎", "修改标题", async () => {
+    actions.appendChild(createBtn("🖉", "修改标题", async () => {
       const exText = item.name;
       const { confirmed, ocrTextEdit } = await openEditPrompt(exText, 1);
       if (!confirmed) return;
@@ -745,7 +745,7 @@ const render = (focusedId = null) => {
     }));
 
     if (item.depth > 0) {
-      actions.appendChild(createBtn("⎘", "向下复制当前节点", async () => { await duplicateBranchToCanvas(index, { includeChildren: false }); }));
+      actions.appendChild(createBtn("❏", "向下复制当前节点", async () => { await duplicateBranchToCanvas(index, { includeChildren: false }); }));
       actions.appendChild(createBtn("⧉", "向下复制当前+子项", async () => { await duplicateBranchToCanvas(index, { includeChildren: true }); }));
       actions.appendChild(createBtn("+", "添加同级", () => { addNewFrameToCanvas("新建节点", (newId) => { const branchCount = getBranchCount(index, treeData); treeData.splice(index + branchCount, 0, { id: newId, name: "新建节点", depth: item.depth, collapsed: false }); }); }));
     }
