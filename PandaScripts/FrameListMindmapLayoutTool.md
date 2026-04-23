@@ -331,6 +331,19 @@ const applyManualNumbering = () => {
   return changed;
 };
 
+// 【新增】移除手动编号逻辑
+const removeManualNumbering = () => {
+  let changed = false;
+  treeData.forEach((item) => {
+    const cleanName = item.name.replace(/^(\d+(?:\.\d+)*)\s+/, '');
+    if (item.name !== cleanName) {
+      item.name = cleanName;
+      changed = true;
+    }
+  });
+  return changed;
+};
+
 const syncTreeDataToSceneNames = () => {
   const nameMap = new Map(treeData.map((item) => [item.id, item.name]));
   const sceneElements = api.getSceneElements();
@@ -484,9 +497,10 @@ header.addEventListener("pointerdown", (e) => {
 
 const headerTitle = document.createElement("div");
 headerTitle.textContent = "Frame 导图大纲";
+Object.assign(headerTitle.style, { whiteSpace: "nowrap",overflow: "hidden" });
 
 const headerActions = document.createElement("div");
-Object.assign(headerActions.style, { display: "flex", alignItems: "center", gap: "10px" });
+Object.assign(headerActions.style, { display: "flex", alignItems: "center", gap: "4px" });
 
 const settingsPanel = document.createElement("div");
 Object.assign(settingsPanel.style, { display: "none", padding: "10px 12px", borderBottom: "1px solid var(--background-modifier-border)", background: "var(--background-primary, #ffffff)" });
@@ -523,6 +537,18 @@ const numberBtn = createIconButton("🔢", "生成/更新序号", (e) => {
   setTimeout(() => { state.suppressChange = false; }, 300);
 });
 
+// 【新增】移除序号按钮事件
+const removeNumberBtn = createIconButton("🔤", "移除序号", (e) => {
+  e.stopPropagation();
+  state.suppressChange = true;
+  const changed = removeManualNumbering();
+  if (changed) {
+    syncTreeDataToSceneNames();
+    render();
+  }
+  setTimeout(() => { state.suppressChange = false; }, 300);
+});
+
 const refreshBtn = createIconButton("🔄", "强制刷新并重排", async (e) => { e.stopPropagation(); treeData = initTreeData(); await syncToCanvas(); scheduleDataRefresh({ reinit: true }); });
 const settingsBtn = createIconButton("⚙️", "布局设置", (e) => { e.stopPropagation(); state.settingsOpen = !state.settingsOpen; settingsPanel.style.display = state.settingsOpen ? "block" : "none"; if (state.settingsOpen) syncSettingsInputs(); });
 const closeBtn = createIconButton("❌", "关闭面板", (e) => { e.stopPropagation(); cleanup(); });
@@ -530,6 +556,7 @@ const closeBtn = createIconButton("❌", "关闭面板", (e) => { e.stopPropagat
 headerActions.appendChild(expandAllBtn);
 headerActions.appendChild(collapseAllBtn);
 headerActions.appendChild(numberBtn);
+headerActions.appendChild(removeNumberBtn); // 【新增】将移除序号按钮加入顶栏
 headerActions.appendChild(settingsBtn);
 headerActions.appendChild(refreshBtn);
 headerActions.appendChild(closeBtn);
@@ -719,12 +746,25 @@ const render = (focusedId = null) => {
     Object.assign(text.style, { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none", flex: "1", });
 
     const actions = document.createElement("div");
-    Object.assign(actions.style, { display: "flex", gap: "2px", opacity: "0", transition: "opacity 0.1s", pointerEvents: "auto", position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", background: "var(--background-modifier-hover, #f1f5f9)", padding: "2px 0 2px 8px", borderRadius: "4px", boxShadow: "-12px 0 10px var(--background-modifier-hover, #f1f5f9)", zIndex: "10" });
+    // 【修改】强制将动作栏容器背景设置为主体背景色（不透明），加入同色遮罩阴影防透底
+    Object.assign(actions.style, {
+      display: "flex", gap: "2px", opacity: "0", transition: "opacity 0.1s",
+      pointerEvents: "auto", position: "absolute", right: "6px", top: "50%",
+      transform: "translateY(-50%)",
+      background: "var(--background-primary, #ffffff)",
+      padding: "2px 0 2px 8px", borderRadius: "4px",
+      boxShadow: "-12px 0 10px var(--background-primary, #ffffff)",
+      zIndex: "10"
+    });
 
     const createBtn = (char, title, onClick) => {
       const btn = document.createElement("div");
       btn.textContent = char; btn.title = title;
-      Object.assign(btn.style, { width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", borderRadius: "4px", color: "var(--text-muted, #94a3b8)", fontSize: "14px", fontWeight: "bold", });
+      Object.assign(btn.style, {
+        width: "20px", height: "20px", display: "flex", alignItems: "center",
+        justifyContent: "center", cursor: "pointer", borderRadius: "4px",
+        color: "var(--text-muted, #94a3b8)", fontSize: "14px", fontWeight: "bold",
+      });
       btn.onmouseenter = () => { btn.style.background = "var(--background-modifier-border, #e2e8f0)"; btn.style.color = "var(--text-normal, #1e293b)"; };
       btn.onmouseleave = () => { btn.style.background = "transparent"; btn.style.color = "var(--text-muted, #94a3b8)"; };
       btn.onclick = (e) => { e.stopPropagation(); onClick(); };
