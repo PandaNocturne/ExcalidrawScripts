@@ -17,9 +17,9 @@ if (!container) {
 }
 
 // --- 0. 防多开与清理 ---
-const ROOT_ID = "ea-frame-outline-mindmap-sync";
-const GLOBAL_KEY = "__eaFrameOutlineMindmap__";
-const SETTINGS_STORAGE_KEY = "frame-list-mindmap-layout-settings";
+const ROOT_ID = "ea-frame-list-mindmap-layout-tool";
+const GLOBAL_KEY = "__eaFrameListMindmapLayoutTool__";
+const SETTINGS_STORAGE_KEY = "ea-frame-list-mindmap-layout-settings";
 const COLLAPSED_STATE_KEY = "__eaFrameOutlineMindmapCollapsed__";
 
 const registry = window[GLOBAL_KEY] ||= new WeakMap();
