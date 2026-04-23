@@ -666,19 +666,25 @@ const addNewFrameToCanvas = async (name, insertToDataCallback) => {
     y: 0,
     width: 240,
     height: 160,
+    angle: 0,                 // 【关键修复】Excalidraw 必须有 angle 才能计算选中框和交互
     name,
     strokeColor: "#000000",
     backgroundColor: "transparent",
-    fillStyle: "hachure",
+    fillStyle: "solid",       // Frame 内部通常用 solid
     strokeWidth: 1,
     strokeStyle: "solid",
     roughness: 0,
     opacity: 100,
     groupIds: [],
     boundElements: [],
+    roundness: null,          // 补充默认属性
+    seed: Math.floor(Math.random() * 1_000_000_000), // 【关键修复】seed 必须是有效整数
     version: 1,
-    versionNonce: Math.random(),
+    versionNonce: Math.floor(Math.random() * 1_000_000_000), // 【关键修复】必须是有效整数
     isDeleted: false,
+    locked: false,            // 【关键修复】确保节点未被锁定
+    link: null,
+    updated: Date.now(),      // 补充更新时间
   };
 
   insertToDataCallback(id);
