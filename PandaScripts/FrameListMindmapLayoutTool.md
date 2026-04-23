@@ -752,8 +752,8 @@ const render = (focusedId = null) => {
       pointerEvents: "auto", position: "absolute", right: "6px", top: "50%",
       transform: "translateY(-50%)",
       background: "var(--background-primary, #ffffff)",
-      padding: "2px 0 2px 8px", borderRadius: "4px",
-      boxShadow: "-12px 0 10px var(--background-primary, #ffffff)",
+      padding: "2px", borderRadius: "4px",
+      // boxShadow: "-12px 0 10px var(--background-primary, #ffffff)",
       zIndex: "10"
     });
 
