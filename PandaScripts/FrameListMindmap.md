@@ -1,9 +1,10 @@
 /*
-## Frame 导图大纲 (完美拐角 + 智能编号 + 高级编辑)
+## Frame 导图大纲 (完美拐角 + 手动层级编号 + 自由视窗)
 - 样式更新：全自动生成原生 Elbow 拐角连线，强制锁定左右边缘锚点。
 - 节点操作：支持节点同步删除，双击大纲聚焦当前节点及其子树。
-- 核心逻辑：智能层级编号 (01, 01-01...)，列表更新时自动重编号并同步到画布。
-- 新增更新：全局折叠状态记忆，支持全部展开/折叠，操作后UI面板无缝秒更新。
+- 核心逻辑：手动层级编号 (1, 1.1, 1.2.1)，点击按钮时执行，不干扰正常编辑。
+- 界面升级：支持拖拽顶部栏改变面板位置，拖拽右下角调整界面宽高度；按键极简化。
+- 稳定性修复：已修复新建节点时因缺少默认渲染属性导致的画布布局崩溃问题。
 */
 
 const api = ea.getExcalidrawAPI();
@@ -95,7 +96,6 @@ const initTreeData = () => {
   const traverse = (frame, depth) => {
     if (!frame || visited.has(frame.id)) return;
     visited.add(frame.id);
-    // 从全局配置加载记忆的折叠状态
     data.push({ id: frame.id, name: frame.name || "未命名", depth, collapsed: collapsedSet.has(frame.id) });
     const children = (childrenMap.get(frame.id) || [])
       .map((id) => frameById.get(id))
@@ -121,24 +121,9 @@ async function openEditPrompt(ocrText, n = 10) {
     if (res === null) return { confirmed: false, ocrTextEdit: ocrText };
     return { confirmed: true, ocrTextEdit: res };
   }
-
-  const ocrTextEdit = await utils.inputPrompt(
-    "编辑文本",
-    "修改 Frame 标题",
-    ocrText,
-    undefined,
-    n,
-    true
-  );
-
-  if (ocrTextEdit === null || typeof ocrTextEdit === "undefined") {
-    return { confirmed: false, ocrTextEdit: ocrText };
-  }
-
-  return {
-    confirmed: true,
-    ocrTextEdit: ocrTextEdit === " " ? "" : ocrTextEdit,
-  };
+  const ocrTextEdit = await utils.inputPrompt("编辑文本", "修改 Frame 标题", ocrText, undefined, n, true);
+  if (ocrTextEdit === null || typeof ocrTextEdit === "undefined") return { confirmed: false, ocrTextEdit: ocrText };
+  return { confirmed: true, ocrTextEdit: ocrTextEdit === " " ? "" : ocrTextEdit };
 }
 
 const getBranchItems = (index, data = treeData) => data.slice(index, index + getBranchCount(index, data));
@@ -151,74 +136,44 @@ const cloneSceneElement = (element, elementIdMap, frameIdMap, groupIdMap) => {
   cloned.version = 1;
   cloned.versionNonce = Math.floor(Math.random() * 1_000_000_000);
 
-  if (typeof cloned.seed === "number") {
-    cloned.seed = Math.floor(Math.random() * 1_000_000_000);
-  }
-  if (typeof cloned.frameId === "string" && frameIdMap.has(cloned.frameId)) {
-    cloned.frameId = frameIdMap.get(cloned.frameId);
-  }
-  if (Array.isArray(cloned.groupIds)) {
-    cloned.groupIds = cloned.groupIds.map((id) => groupIdMap.get(id) || id);
-  }
+  if (typeof cloned.seed === "number") cloned.seed = Math.floor(Math.random() * 1_000_000_000);
+  if (typeof cloned.frameId === "string" && frameIdMap.has(cloned.frameId)) cloned.frameId = frameIdMap.get(cloned.frameId);
+  if (Array.isArray(cloned.groupIds)) cloned.groupIds = cloned.groupIds.map((id) => groupIdMap.get(id) || id);
   if (Array.isArray(cloned.boundElements)) {
-    cloned.boundElements = cloned.boundElements
-      .map((binding) => elementIdMap.has(binding.id) ? { ...binding, id: elementIdMap.get(binding.id) } : null)
-      .filter(Boolean);
+    cloned.boundElements = cloned.boundElements.map((binding) => elementIdMap.has(binding.id) ? { ...binding, id: elementIdMap.get(binding.id) } : null).filter(Boolean);
   }
-  if (typeof cloned.containerId === "string" && elementIdMap.has(cloned.containerId)) {
-    cloned.containerId = elementIdMap.get(cloned.containerId);
-  }
-  if (cloned.startBinding?.elementId && elementIdMap.has(cloned.startBinding.elementId)) {
-    cloned.startBinding.elementId = elementIdMap.get(cloned.startBinding.elementId);
-  }
-  if (cloned.endBinding?.elementId && elementIdMap.has(cloned.endBinding.elementId)) {
-    cloned.endBinding.elementId = elementIdMap.get(cloned.endBinding.elementId);
-  }
-
+  if (typeof cloned.containerId === "string" && elementIdMap.has(cloned.containerId)) cloned.containerId = elementIdMap.get(cloned.containerId);
+  if (cloned.startBinding?.elementId && elementIdMap.has(cloned.startBinding.elementId)) cloned.startBinding.elementId = elementIdMap.get(cloned.startBinding.elementId);
+  if (cloned.endBinding?.elementId && elementIdMap.has(cloned.endBinding.elementId)) cloned.endBinding.elementId = elementIdMap.get(cloned.endBinding.elementId);
   return cloned;
 };
 
 const duplicateBranchToCanvas = async (index, { includeChildren = false } = {}) => {
   state.suppressChange = true;
-
   const branchItems = getBranchItems(index);
   const sourceItems = includeChildren ? branchItems : [branchItems[0]];
   const sourceFrameIds = new Set(sourceItems.map((item) => item.id));
   const frameIdMap = new Map(sourceItems.map((item) => [item.id, createCloneId("frame")]));
   const sceneElements = api.getSceneElements();
-  const sourceElements = sceneElements.filter(
-    (el) => !el.isDeleted && (sourceFrameIds.has(el.id) || sourceFrameIds.has(el.frameId))
-  );
+  const sourceElements = sceneElements.filter((el) => !el.isDeleted && (sourceFrameIds.has(el.id) || sourceFrameIds.has(el.frameId)));
   const groupIdMap = new Map();
 
   sourceElements.forEach((el) => {
-    (el.groupIds || []).forEach((groupId) => {
-      if (!groupIdMap.has(groupId)) {
-        groupIdMap.set(groupId, createCloneId("group"));
-      }
-    });
+    (el.groupIds || []).forEach((groupId) => { if (!groupIdMap.has(groupId)) groupIdMap.set(groupId, createCloneId("group")); });
   });
 
-  const elementIdMap = new Map(
-    sourceElements.map((el) => [el.id, frameIdMap.get(el.id) || createCloneId(el.type || "el")])
-  );
-  const clonedTreeItems = sourceItems.map((item) => ({
-    ...item,
-    id: frameIdMap.get(item.id),
-    collapsed: false, // 复制出来的新节点默认展开
-  }));
+  const elementIdMap = new Map(sourceElements.map((el) => [el.id, frameIdMap.get(el.id) || createCloneId(el.type || "el")]));
+  const clonedTreeItems = sourceItems.map((item) => ({ ...item, id: frameIdMap.get(item.id), collapsed: false }));
   const insertIndex = index + branchItems.length;
   const clonedSceneElements = sourceElements.map((el) => cloneSceneElement(el, elementIdMap, frameIdMap, groupIdMap));
 
-  // 修改数据并立刻更新 UI 面板
   treeData.splice(insertIndex, 0, ...clonedTreeItems);
   render();
-
   api.updateScene({ elements: [...sceneElements, ...clonedSceneElements], commitToHistory: true });
 
   setTimeout(async () => {
     await syncToCanvas();
-    scheduleNumberingRefresh({ focusedId: clonedTreeItems[0]?.id || null });
+    scheduleDataRefresh({ focusedId: clonedTreeItems[0]?.id || null });
   }, 100);
 };
 
@@ -227,41 +182,27 @@ const duplicateBranchToCanvas = async (index, { includeChildren = false } = {}) 
 // =====================================================================
 const syncToCanvas = async () => {
   state.suppressChange = true;
-
   const horizontalGap = sanitizeNumber(layoutSettings.horizontalGap, DEFAULT_LAYOUT_SETTINGS.horizontalGap);
   const verticalGap = sanitizeNumber(layoutSettings.verticalGap, DEFAULT_LAYOUT_SETTINGS.verticalGap);
   const allEls = api.getSceneElements();
   ea.clear();
 
   const frameIds = new Set(treeData.map((t) => t.id));
-
   const framesToEdit = allEls.filter((e) => e.type === "frame" && frameIds.has(e.id) && !e.isDeleted);
   ea.copyViewElementsToEAforEditing(framesToEdit);
 
-  const oldArrows = allEls.filter(
-    (e) =>
-      e.type === "arrow" &&
-      !e.isDeleted &&
-      frameIds.has(e.startBinding?.elementId) &&
-      frameIds.has(e.endBinding?.elementId)
-  );
+  const oldArrows = allEls.filter((e) => e.type === "arrow" && !e.isDeleted && frameIds.has(e.startBinding?.elementId) && frameIds.has(e.endBinding?.elementId));
   const oldArrowIds = new Set(oldArrows.map((a) => a.id));
 
   if (oldArrows.length > 0) {
     ea.copyViewElementsToEAforEditing(oldArrows);
-    oldArrows.forEach((a) => {
-      ea.elementsDict[a.id].isDeleted = true;
-    });
+    oldArrows.forEach((a) => { ea.elementsDict[a.id].isDeleted = true; });
   }
 
   const frameMap = new Map();
   framesToEdit.forEach((frame) => {
     const el = ea.elementsDict[frame.id];
-    if (el.boundElements) {
-      el.boundElements = el.boundElements.filter((b) => !oldArrowIds.has(b.id));
-    } else {
-      el.boundElements = [];
-    }
+    el.boundElements = el.boundElements ? el.boundElements.filter((b) => !oldArrowIds.has(b.id)) : [];
     frameMap.set(frame.id, el);
   });
 
@@ -283,13 +224,10 @@ const syncToCanvas = async () => {
       return node.totalHeight;
     }
     let childrenHeightSum = 0;
-    node.children.forEach((child) => {
-      childrenHeightSum += calcHeights(child);
-    });
+    node.children.forEach((child) => { childrenHeightSum += calcHeights(child); });
     node.totalHeight = Math.max(node.frameHeight + verticalGap, childrenHeightSum);
     return node.totalHeight;
   };
-
   nestedTree.forEach((rootNode) => calcHeights(rootNode));
 
   const arrowsToCreate = [];
@@ -303,19 +241,15 @@ const syncToCanvas = async () => {
     const dy = targetY - frame.y;
 
     if (dx !== 0 || dy !== 0) {
-      frame.x += dx;
-      frame.y += dy;
-
+      frame.x += dx; frame.y += dy;
       const innerEls = ea.getElementsInFrame(frame, allEls);
       innerEls.forEach((el) => {
         if (!ea.elementsDict[el.id]) ea.copyViewElementsToEAforEditing([el]);
-        ea.elementsDict[el.id].x += dx;
-        ea.elementsDict[el.id].y += dy;
+        ea.elementsDict[el.id].x += dx; ea.elementsDict[el.id].y += dy;
       });
     }
 
     if (!node.children || node.children.length === 0) return;
-
     const childX = targetX + frame.width + horizontalGap;
     const totalChildrenHeight = node.children.reduce((sum, child) => sum + child.totalHeight, 0);
     let currentY = centerY - totalChildrenHeight / 2;
@@ -327,72 +261,35 @@ const syncToCanvas = async () => {
       currentY += child.totalHeight;
     });
   };
-
   nestedTree.forEach((rootNode) => {
     const frame = frameMap.get(rootNode.id);
     if (frame) setPositions(rootNode, frame.x, frame.y + frame.height / 2);
   });
 
-  const arrowStyle = {
-    strokeColor: ARROW_STROKE_COLOR,
-    strokeWidth: ARROW_STROKE_WIDTH,
-    strokeStyle: "solid",
-    fillStyle: "solid",
-    roughness: 0,
-    roundness: { type: 2 },
-    startArrowhead: null,
-    endArrowhead: "arrow",
-    elbowed: true,
-  };
-
+  const arrowStyle = { strokeColor: ARROW_STROKE_COLOR, strokeWidth: ARROW_STROKE_WIDTH, strokeStyle: "solid", fillStyle: "solid", roughness: 0, roundness: { type: 2 }, startArrowhead: null, endArrowhead: "arrow", elbowed: true };
   Object.assign(ea.style, arrowStyle);
   const elementIdsBeforeConnect = new Set(Object.keys(ea.elementsDict));
 
-  arrowsToCreate.forEach((arr) => {
-    ea.connectObjects(arr.parent, "right", arr.child, "left", { type: "arrow", ...arrowStyle });
-  });
+  arrowsToCreate.forEach((arr) => { ea.connectObjects(arr.parent, "right", arr.child, "left", { type: "arrow", ...arrowStyle }); });
 
   const newArrowIds = Object.keys(ea.elementsDict).filter((id) => !elementIdsBeforeConnect.has(id));
   newArrowIds.forEach((id) => {
     const el = ea.elementsDict[id];
     if (el?.type !== "arrow") return;
     Object.assign(el, arrowStyle);
-
-    if (el.startBinding) {
-      el.startBinding.fixedPoint = [1, 0.5];
-      delete el.startBinding.focus;
-    }
-    if (el.endBinding) {
-      el.endBinding.fixedPoint = [0, 0.5];
-      delete el.endBinding.focus;
-    }
+    if (el.startBinding) { el.startBinding.fixedPoint = [1, 0.5]; delete el.startBinding.focus; }
+    if (el.endBinding) { el.endBinding.fixedPoint = [0, 0.5]; delete el.endBinding.focus; }
   });
 
   await ea.addElementsToView(false, false);
-
-  setTimeout(() => {
-    state.suppressChange = false;
-  }, 300);
+  setTimeout(() => { state.suppressChange = false; }, 300);
 };
 
 // =====================================================================
 // === 3. 大纲 UI 与交互层 ===
 // =====================================================================
 const INDENT_SIZE = 22;
-const state = {
-  draggingId: null,
-  dragIndex: -1,
-  dragCount: 0,
-  targetIndex: -1,
-  targetDepth: 0,
-  itemBounds: [],
-  suppressChange: false,
-  unsub: null,
-  renderTimer: 0,
-  settingsOpen: false,
-  numberingTimer: 0,
-  numberingInFlight: false,
-};
+const state = { draggingId: null, dragIndex: -1, dragCount: 0, targetIndex: -1, targetDepth: 0, itemBounds: [], suppressChange: false, unsub: null, renderTimer: 0, settingsOpen: false, dataRefreshTimer: 0, refreshInFlight: false };
 
 const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
 const getBranchCount = (index, data) => {
@@ -402,20 +299,19 @@ const getBranchCount = (index, data) => {
 };
 const hasChildren = (index, data) => index + 1 < data.length && data[index + 1].depth > data[index].depth;
 
-// [修改] 支持嵌套层级自动编号 (01, 01-01, 01-02-01)
-const applyAutoNumbering = () => {
+// [手动编号逻辑]
+const applyManualNumbering = () => {
   let counters = [];
   let changed = false;
-
   treeData.forEach((item) => {
     const d = item.depth;
-    counters.splice(d + 1); // 清理更深层级的计数
+    counters.splice(d + 1);
     counters[d] = (counters[d] || 0) + 1;
 
-    // 生成嵌套序号，比如 01-02-01
-    const numStr = counters.slice(0, d + 1).map(n => String(n).padStart(2, '0')).join('-');
+    // 生成形如 1.2.1 的编号
+    const numStr = counters.slice(0, d + 1).join('.');
     // 匹配并清理已存在的旧层级前缀
-    const cleanName = item.name.replace(/^\d{2}(?:-\d{2})*\s+/, '');
+    const cleanName = item.name.replace(/^(\d+(?:\.\d+)*)\s+/, '');
     const newName = `${numStr} ${cleanName}`;
 
     if (item.name !== newName) {
@@ -423,7 +319,6 @@ const applyAutoNumbering = () => {
       changed = true;
     }
   });
-
   return changed;
 };
 
@@ -433,43 +328,30 @@ const syncTreeDataToSceneNames = () => {
   let changed = false;
   const updated = sceneElements.map((el) => {
     const nextName = nameMap.get(el.id);
-    if (typeof nextName === "string" && el.name !== nextName) {
-      changed = true;
-      return { ...el, name: nextName };
-    }
+    if (typeof nextName === "string" && el.name !== nextName) { changed = true; return { ...el, name: nextName }; }
     return el;
   });
-
   if (!changed) return false;
   api.updateScene({ elements: updated, commitToHistory: true });
   return true;
 };
 
-const flushNumbering = ({ reinit = false, focusedId = null } = {}) => {
-  if (state.numberingInFlight) return;
-  state.numberingInFlight = true;
+const flushDataRefresh = ({ reinit = false, focusedId = null } = {}) => {
+  if (state.refreshInFlight) return;
+  state.refreshInFlight = true;
   state.suppressChange = true;
-
   try {
     if (reinit) treeData = initTreeData();
-    const numberingChanged = applyAutoNumbering();
     const sceneChanged = syncTreeDataToSceneNames();
-    if (numberingChanged || sceneChanged || reinit) {
-      render(focusedId);
-    }
+    if (sceneChanged || reinit) render(focusedId);
   } finally {
-    setTimeout(() => {
-      state.suppressChange = false;
-      state.numberingInFlight = false;
-    }, 300);
+    setTimeout(() => { state.suppressChange = false; state.refreshInFlight = false; }, 300);
   }
 };
 
-const scheduleNumberingRefresh = ({ delay = 120, reinit = false, focusedId = null } = {}) => {
-  clearTimeout(state.numberingTimer);
-  state.numberingTimer = setTimeout(() => {
-    flushNumbering({ reinit, focusedId });
-  }, delay);
+const scheduleDataRefresh = ({ delay = 120, reinit = false, focusedId = null } = {}) => {
+  clearTimeout(state.dataRefreshTimer);
+  state.dataRefreshTimer = setTimeout(() => { flushDataRefresh({ reinit, focusedId }); }, delay);
 };
 
 const createIconButton = (text, title, onClick) => {
@@ -477,25 +359,22 @@ const createIconButton = (text, title, onClick) => {
   btn.textContent = text;
   btn.title = title;
   Object.assign(btn.style, {
-    padding: "2px 6px",
-    borderRadius: "6px",
     cursor: "pointer",
     flexShrink: "0",
     color: "var(--text-muted, #64748b)",
-    border: "1px solid var(--background-modifier-border, #d4d4d8)",
-    background: "var(--background-primary, #ffffff)",
-    fontSize: "12px",
-    fontWeight: "500",
-    lineHeight: "18px",
+    fontSize: "14px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transition: "transform 0.1s ease, color 0.1s ease",
   });
   btn.onmouseenter = () => {
-    btn.style.background = "var(--background-modifier-hover, #f1f5f9)";
+    btn.style.transform = "scale(1.2)";
+    btn.style.color = "var(--text-normal, #1e293b)";
   };
   btn.onmouseleave = () => {
-    btn.style.background = "var(--background-primary, #ffffff)";
+    btn.style.transform = "scale(1)";
+    btn.style.color = "var(--text-muted, #64748b)";
   };
   btn.onclick = onClick;
   return btn;
@@ -509,22 +388,19 @@ Object.assign(root.style, {
   top: "60px",
   zIndex: "40",
   width: "320px",
-  maxHeight: "550px",
+  height: "500px",
+  minWidth: "200px",
+  minHeight: "150px",
   background: "var(--background-primary, #ffffff)",
   border: "1px solid var(--background-modifier-border, #d4d4d8)",
   borderRadius: "8px",
   boxShadow: "var(--shadow-s)",
   display: "flex",
   flexDirection: "column",
+  resize: "both",
   overflow: "hidden",
   userSelect: "none",
 });
-
-const cleanup = () => {
-  if (state.unsub) state.unsub();
-  root.remove();
-  registry.delete(container);
-};
 
 const header = document.createElement("div");
 Object.assign(header.style, {
@@ -537,19 +413,44 @@ Object.assign(header.style, {
   fontWeight: "600",
   background: "var(--background-secondary, #f4f5f7)",
   borderBottom: "1px solid var(--background-modifier-border)",
+  cursor: "move",
 });
+
+let isDraggingUI = false;
+let startDragX, startDragY;
+
+header.onmousedown = (e) => {
+  if (e.target !== header && e.target !== headerTitle) return;
+  isDraggingUI = true;
+  startDragX = e.clientX;
+  startDragY = e.clientY;
+
+  const rect = root.getBoundingClientRect();
+  const parentRect = root.parentElement.getBoundingClientRect();
+  root.style.right = 'auto';
+  root.style.bottom = 'auto';
+  root.style.left = (rect.left - parentRect.left) + "px";
+  root.style.top = (rect.top - parentRect.top) + "px";
+};
+
+const onMouseMoveUI = (e) => {
+  if (!isDraggingUI) return;
+  const currentLeft = parseFloat(root.style.left) || 0;
+  const currentTop = parseFloat(root.style.top) || 0;
+  root.style.left = (currentLeft + e.movementX) + "px";
+  root.style.top = (currentTop + e.movementY) + "px";
+};
+
+const onMouseUpUI = () => { isDraggingUI = false; };
+document.addEventListener("mousemove", onMouseMoveUI);
+document.addEventListener("mouseup", onMouseUpUI);
 
 const headerTitle = document.createElement("div");
-headerTitle.textContent = "Frame 导图大纲";
+headerTitle.textContent = "导图大纲";
 
 const headerActions = document.createElement("div");
-Object.assign(headerActions.style, {
-  display: "flex",
-  alignItems: "center",
-  gap: "4px", // 更紧凑的间距，适应更多按钮
-});
+Object.assign(headerActions.style, { display: "flex", alignItems: "center", gap: "10px" });
 
-// -- 设置面板逻辑略去(保持原样) --
 const settingsPanel = document.createElement("div");
 Object.assign(settingsPanel.style, { display: "none", padding: "10px 12px", borderBottom: "1px solid var(--background-modifier-border)", background: "var(--background-primary, #ffffff)" });
 const settingsGrid = document.createElement("div");
@@ -571,37 +472,23 @@ const applySettingsFromInputs = async () => {
 };
 horizontalGapInput.onchange = applySettingsFromInputs; verticalGapInput.onchange = applySettingsFromInputs;
 
-// [头部快捷按钮区]
-const expandAllBtn = createIconButton("➕", "全部展开", (e) => {
+const expandAllBtn = createIconButton("➕", "全部展开", (e) => { e.stopPropagation(); treeData.forEach(item => { item.collapsed = false; collapsedSet.delete(item.id); }); render(); });
+const collapseAllBtn = createIconButton("➖", "全部折叠", (e) => { e.stopPropagation(); treeData.forEach(item => { item.collapsed = true; collapsedSet.add(item.id); }); render(); });
+
+const numberBtn = createIconButton("🔢", "生成/更新序号", (e) => {
   e.stopPropagation();
-  treeData.forEach(item => { item.collapsed = false; collapsedSet.delete(item.id); });
-  render();
+  state.suppressChange = true;
+  const changed = applyManualNumbering();
+  if (changed) {
+    syncTreeDataToSceneNames();
+    render();
+  }
+  setTimeout(() => { state.suppressChange = false; }, 300);
 });
-const collapseAllBtn = createIconButton("➖", "全部折叠", (e) => {
-  e.stopPropagation();
-  treeData.forEach(item => { item.collapsed = true; collapsedSet.add(item.id); });
-  render();
-});
-const numberBtn = createIconButton("🔢", "自动重排序号", (e) => {
-  e.stopPropagation();
-  flushNumbering();
-});
-const refreshBtn = createIconButton("🔄️", "强制刷新画布重排", async (e) => {
-  e.stopPropagation();
-  treeData = initTreeData();
-  await syncToCanvas();
-  scheduleNumberingRefresh({ reinit: true });
-});
-const settingsBtn = createIconButton("⚙️", "布局设置", (e) => {
-  e.stopPropagation();
-  state.settingsOpen = !state.settingsOpen;
-  settingsPanel.style.display = state.settingsOpen ? "block" : "none";
-  if (state.settingsOpen) syncSettingsInputs();
-});
-const closeBtn = createIconButton("❌", "关闭大纲面板", (e) => {
-  e.stopPropagation();
-  cleanup();
-});
+
+const refreshBtn = createIconButton("🔄", "强制刷新并重排", async (e) => { e.stopPropagation(); treeData = initTreeData(); await syncToCanvas(); scheduleDataRefresh({ reinit: true }); });
+const settingsBtn = createIconButton("⚙️", "布局设置", (e) => { e.stopPropagation(); state.settingsOpen = !state.settingsOpen; settingsPanel.style.display = state.settingsOpen ? "block" : "none"; if (state.settingsOpen) syncSettingsInputs(); });
+const closeBtn = createIconButton("❌", "关闭面板", (e) => { e.stopPropagation(); cleanup(); });
 
 headerActions.appendChild(expandAllBtn);
 headerActions.appendChild(collapseAllBtn);
@@ -614,12 +501,7 @@ header.appendChild(headerTitle);
 header.appendChild(headerActions);
 
 const scrollWrapper = document.createElement("div");
-Object.assign(scrollWrapper.style, {
-  flex: "1",
-  overflowY: "auto",
-  position: "relative",
-  minHeight: "150px",
-});
+Object.assign(scrollWrapper.style, { flex: "1", overflowY: "auto", position: "relative", minHeight: "150px" });
 
 const ulContainer = document.createElement("ul");
 Object.assign(ulContainer.style, { listStyle: "none", margin: "0", padding: "8px 0" });
@@ -636,32 +518,52 @@ root.appendChild(header);
 root.appendChild(settingsPanel);
 root.appendChild(scrollWrapper);
 container.appendChild(root);
-
 syncSettingsInputs();
 
+const cleanup = () => {
+  if (state.unsub) state.unsub();
+  document.removeEventListener("mousemove", onMouseMoveUI);
+  document.removeEventListener("mouseup", onMouseUpUI);
+  root.remove();
+  registry.delete(container);
+};
+
+// 【修复】：全量恢复了初始版的新建节点对象，补齐了所有的必需默认属性
 const addNewFrameToCanvas = async (name, insertToDataCallback) => {
   state.suppressChange = true;
   const id = `frame_${Date.now()}`;
+
   const newFrame = {
-    id, type: "frame", x: 0, y: 0, width: 240, height: 160, name,
-    strokeColor: "#000000", backgroundColor: "transparent", fillStyle: "hachure",
-    strokeWidth: 1, strokeStyle: "solid", roughness: 0, opacity: 100,
-    groupIds: [], boundElements: [], version: 1, versionNonce: Math.random(), isDeleted: false,
+    id,
+    type: "frame",
+    x: 0,
+    y: 0,
+    width: 240,
+    height: 160,
+    name,
+    strokeColor: "#000000",
+    backgroundColor: "transparent",
+    fillStyle: "hachure",
+    strokeWidth: 1,
+    strokeStyle: "solid",
+    roughness: 0,
+    opacity: 100,
+    groupIds: [],
+    boundElements: [],
+    version: 1,
+    versionNonce: Math.random(),
+    isDeleted: false,
   };
 
   insertToDataCallback(id);
-  // 数据更新后立即渲染 UI 骨架
   render();
 
-  const numberingChanged = applyAutoNumbering();
   const finalName = treeData.find((item) => item.id === id)?.name || name;
-
   api.updateScene({ elements: [...api.getSceneElements(), { ...newFrame, name: finalName }], commitToHistory: true });
 
   setTimeout(async () => {
     await syncToCanvas();
-    if (numberingChanged) scheduleNumberingRefresh({ focusedId: id });
-    else render(id);
+    scheduleDataRefresh({ focusedId: id });
   }, 100);
 };
 
@@ -670,21 +572,15 @@ const deleteFramesFromCanvas = async (idsToDeleteSet) => {
   const sceneElements = api.getSceneElements();
   const updated = sceneElements.map((el) => {
     const isTargetFrameOrInner = idsToDeleteSet.has(el.id) || idsToDeleteSet.has(el.frameId);
-    const isConnectedArrow = el.type === "arrow" && (
-      idsToDeleteSet.has(el.startBinding?.elementId) ||
-      idsToDeleteSet.has(el.endBinding?.elementId)
-    );
-
-    if (isTargetFrameOrInner || isConnectedArrow) {
-      return { ...el, isDeleted: true };
-    }
+    const isConnectedArrow = el.type === "arrow" && (idsToDeleteSet.has(el.startBinding?.elementId) || idsToDeleteSet.has(el.endBinding?.elementId));
+    if (isTargetFrameOrInner || isConnectedArrow) return { ...el, isDeleted: true };
     return el;
   });
 
   api.updateScene({ elements: updated, commitToHistory: true });
   setTimeout(async () => {
     await syncToCanvas();
-    scheduleNumberingRefresh({ reinit: true });
+    scheduleDataRefresh({ reinit: true });
   }, 100);
 };
 
@@ -701,136 +597,64 @@ const render = (focusedId = null) => {
     if (item.collapsed && isParent) hideDepthLimit = item.depth;
 
     const li = document.createElement("li");
-    li.draggable = true;
-    li.dataset.id = item.id;
-    li.dataset.dataIndex = index;
-    li.tabIndex = 0;
+    li.draggable = true; li.dataset.id = item.id; li.dataset.dataIndex = index; li.tabIndex = 0;
 
     Object.assign(li.style, {
-      padding: `4px 8px 4px ${12 + item.depth * INDENT_SIZE}px`,
-      fontSize: "13px",
-      display: "flex",
-      alignItems: "center",
-      cursor: "grab",
-      color: "var(--text-normal, #1e293b)",
-      outline: "none",
-      borderRadius: "4px",
-      margin: "0 4px",
-      border: "1px solid transparent",
-      position: "relative", // 设置相对定位，为悬浮层铺垫
+      padding: `4px 8px 4px ${12 + item.depth * INDENT_SIZE}px`, fontSize: "13px", display: "flex", alignItems: "center",
+      cursor: "grab", color: "var(--text-normal, #1e293b)", outline: "none", borderRadius: "4px", margin: "0 4px",
+      border: "1px solid transparent", position: "relative",
     });
 
     const toggle = document.createElement("div");
-    Object.assign(toggle.style, {
-      width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center",
-      flexShrink: 0, marginRight: "4px", borderRadius: "4px", color: "var(--text-muted, #94a3b8)",
-      cursor: isParent ? "pointer" : "default", fontSize: isParent ? "10px" : "14px", transition: "background 0.1s",
-    });
+    Object.assign(toggle.style, { width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: "4px", borderRadius: "4px", color: "var(--text-muted, #94a3b8)", cursor: isParent ? "pointer" : "default", fontSize: isParent ? "10px" : "14px", transition: "background 0.1s", });
     toggle.innerHTML = isParent ? (item.collapsed ? "▶" : "▼") : "•";
 
     if (isParent) {
-      toggle.onclick = (e) => {
-        e.stopPropagation();
-        item.collapsed = !item.collapsed;
-        // 记忆折叠状态
-        if (item.collapsed) collapsedSet.add(item.id);
-        else collapsedSet.delete(item.id);
-        render(item.id);
-      };
+      toggle.onclick = (e) => { e.stopPropagation(); item.collapsed = !item.collapsed; if (item.collapsed) collapsedSet.add(item.id); else collapsedSet.delete(item.id); render(item.id); };
       toggle.onmouseenter = () => { toggle.style.background = "var(--background-modifier-border, #e2e8f0)"; };
       toggle.onmouseleave = () => { toggle.style.background = "transparent"; };
     }
 
     const text = document.createElement("span");
     text.textContent = item.name;
-    Object.assign(text.style, {
-      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none", flex: "1",
-    });
+    Object.assign(text.style, { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none", flex: "1", });
 
     const actions = document.createElement("div");
-    Object.assign(actions.style, {
-      display: "flex", gap: "2px", opacity: "0", transition: "opacity 0.1s", pointerEvents: "auto",
-      // 将按钮悬浮定位在标题上方右侧，加入背景羽化遮罩，防止字体错乱
-      position: "absolute",
-      right: "6px",
-      top: "50%",
-      transform: "translateY(-50%)",
-      background: "var(--background-modifier-hover, #f1f5f9)",
-      padding: "2px 0 2px 8px",
-      borderRadius: "4px",
-      boxShadow: "-12px 0 10px var(--background-modifier-hover, #f1f5f9)",
-      zIndex: "10"
-    });
+    Object.assign(actions.style, { display: "flex", gap: "2px", opacity: "0", transition: "opacity 0.1s", pointerEvents: "auto", position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", background: "var(--background-modifier-hover, #f1f5f9)", padding: "2px 0 2px 8px", borderRadius: "4px", boxShadow: "-12px 0 10px var(--background-modifier-hover, #f1f5f9)", zIndex: "10" });
 
     const createBtn = (char, title, onClick) => {
       const btn = document.createElement("div");
-      btn.textContent = char;
-      btn.title = title;
-      Object.assign(btn.style, {
-        width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center",
-        cursor: "pointer", borderRadius: "4px", color: "var(--text-muted, #94a3b8)", fontSize: "14px", fontWeight: "bold",
-      });
+      btn.textContent = char; btn.title = title;
+      Object.assign(btn.style, { width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", borderRadius: "4px", color: "var(--text-muted, #94a3b8)", fontSize: "14px", fontWeight: "bold", });
       btn.onmouseenter = () => { btn.style.background = "var(--background-modifier-border, #e2e8f0)"; btn.style.color = "var(--text-normal, #1e293b)"; };
       btn.onmouseleave = () => { btn.style.background = "transparent"; btn.style.color = "var(--text-muted, #94a3b8)"; };
       btn.onclick = (e) => { e.stopPropagation(); onClick(); };
       return btn;
     };
 
-    actions.appendChild(
-      createBtn("✎", "修改标题", async () => {
-        const exText = item.name;
-        const { confirmed, ocrTextEdit } = await openEditPrompt(exText, 1);
-        if (!confirmed) return;
-        const finalName = ocrTextEdit;
-
-        // UI零延迟反馈
-        item.name = finalName;
-        render(item.id);
-
-        state.suppressChange = true;
-        const sceneElements = api.getSceneElements();
-        const updated = sceneElements.map((el) => el.id === item.id ? { ...el, name: finalName } : el);
-        api.updateScene({ elements: updated, commitToHistory: true });
-
-        setTimeout(() => state.suppressChange = false, 300);
-      })
-    );
+    actions.appendChild(createBtn("✎", "修改标题", async () => {
+      const exText = item.name;
+      const { confirmed, ocrTextEdit } = await openEditPrompt(exText, 1);
+      if (!confirmed) return;
+      const finalName = ocrTextEdit;
+      item.name = finalName; render(item.id);
+      state.suppressChange = true;
+      const sceneElements = api.getSceneElements();
+      const updated = sceneElements.map((el) => el.id === item.id ? { ...el, name: finalName } : el);
+      api.updateScene({ elements: updated, commitToHistory: true });
+      setTimeout(() => state.suppressChange = false, 300);
+    }));
 
     if (item.depth > 0) {
       actions.appendChild(createBtn("⎘", "向下复制当前节点", async () => { await duplicateBranchToCanvas(index, { includeChildren: false }); }));
       actions.appendChild(createBtn("⧉", "向下复制当前+子项", async () => { await duplicateBranchToCanvas(index, { includeChildren: true }); }));
-      actions.appendChild(
-        createBtn("+", "添加同级", () => {
-          addNewFrameToCanvas("新建节点", (newId) => {
-            const branchCount = getBranchCount(index, treeData);
-            treeData.splice(index + branchCount, 0, { id: newId, name: "新建节点", depth: item.depth, collapsed: false });
-          });
-        })
-      );
+      actions.appendChild(createBtn("+", "添加同级", () => { addNewFrameToCanvas("新建节点", (newId) => { const branchCount = getBranchCount(index, treeData); treeData.splice(index + branchCount, 0, { id: newId, name: "新建节点", depth: item.depth, collapsed: false }); }); }));
     }
 
-    actions.appendChild(
-      createBtn("↳", "添加子项", () => {
-        item.collapsed = false;
-        addNewFrameToCanvas("新建子节点", (newId) => {
-          const branchCount = getBranchCount(index, treeData);
-          treeData.splice(index + branchCount, 0, { id: newId, name: "新建子节点", depth: item.depth + 1, collapsed: false });
-        });
-      })
-    );
+    actions.appendChild(createBtn("↳", "添加子项", () => { item.collapsed = false; addNewFrameToCanvas("新建子节点", (newId) => { const branchCount = getBranchCount(index, treeData); treeData.splice(index + branchCount, 0, { id: newId, name: "新建子节点", depth: item.depth + 1, collapsed: false }); }); }));
+    actions.appendChild(createBtn("×", "删除", () => { const branchCount = getBranchCount(index, treeData); const deleted = treeData.splice(index, branchCount); render(); deleteFramesFromCanvas(new Set(deleted.map((d) => d.id))); }));
 
-    actions.appendChild(
-      createBtn("×", "删除", () => {
-        const branchCount = getBranchCount(index, treeData);
-        const deleted = treeData.splice(index, branchCount);
-        render(); // 无缝反馈：操作后立刻渲染抹去节点
-        deleteFramesFromCanvas(new Set(deleted.map((d) => d.id)));
-      })
-    );
-
-    li.appendChild(toggle);
-    li.appendChild(text);
-    li.appendChild(actions);
+    li.appendChild(toggle); li.appendChild(text); li.appendChild(actions);
 
     li.ondblclick = (e) => {
       if (actions.contains(e.target) || toggle.contains(e.target)) return;
@@ -842,65 +666,30 @@ const render = (focusedId = null) => {
 
     li.onfocus = () => { li.style.background = "var(--background-modifier-hover, #f1f5f9)"; };
     li.onblur = () => { li.style.background = "transparent"; };
-    li.onmouseenter = () => {
-      if (!state.draggingId && document.activeElement !== li) li.style.background = "var(--background-modifier-hover, #f1f5f9)";
-      actions.style.opacity = "1";
-    };
-    li.onmouseleave = () => {
-      if (document.activeElement !== li) li.style.background = "transparent";
-      actions.style.opacity = "0";
-    };
+    li.onmouseenter = () => { if (!state.draggingId && document.activeElement !== li) li.style.background = "var(--background-modifier-hover, #f1f5f9)"; actions.style.opacity = "1"; };
+    li.onmouseleave = () => { if (document.activeElement !== li) li.style.background = "transparent"; actions.style.opacity = "0"; };
 
     li.onkeydown = async (e) => {
       if (e.key === "Tab") {
         e.preventDefault();
-        const branchCount = getBranchCount(index, treeData);
-        let changed = false;
-        if (e.shiftKey) {
-          if (item.depth > 0) {
-            for (let i = 0; i < branchCount; i++) treeData[index + i].depth -= 1;
-            changed = true;
-          }
-        } else {
-          const prevDepth = index > 0 ? treeData[index - 1].depth : -1;
-          if (item.depth <= prevDepth) {
-            for (let i = 0; i < branchCount; i++) treeData[index + i].depth += 1;
-            changed = true;
-          }
-        }
-        if (changed) {
-          render(); // TAB 无缝缩进反馈
-          await syncToCanvas();
-          scheduleNumberingRefresh({ focusedId: item.id });
-        }
+        const branchCount = getBranchCount(index, treeData); let changed = false;
+        if (e.shiftKey) { if (item.depth > 0) { for (let i = 0; i < branchCount; i++) treeData[index + i].depth -= 1; changed = true; } }
+        else { const prevDepth = index > 0 ? treeData[index - 1].depth : -1; if (item.depth <= prevDepth) { for (let i = 0; i < branchCount; i++) treeData[index + i].depth += 1; changed = true; } }
+        if (changed) { render(); await syncToCanvas(); scheduleDataRefresh({ focusedId: item.id }); }
       }
     };
 
     li.ondragstart = (e) => {
-      state.draggingId = item.id; state.dragIndex = index; state.dragCount = getBranchCount(index, treeData);
-      e.dataTransfer.effectAllowed = "move";
-      setTimeout(() => {
-        ulContainer.querySelectorAll("li").forEach((node) => {
-          const dataIdx = parseInt(node.dataset.dataIndex);
-          if (dataIdx >= state.dragIndex && dataIdx < state.dragIndex + state.dragCount) node.style.opacity = "0.3";
-        });
-      }, 0);
-      state.itemBounds = Array.from(ulContainer.querySelectorAll("li")).map((node) => {
-        const rect = node.getBoundingClientRect(); const wrapRect = scrollWrapper.getBoundingClientRect();
-        return { dataIndex: parseInt(node.dataset.dataIndex), top: rect.top - wrapRect.top + scrollWrapper.scrollTop, bottom: rect.bottom - wrapRect.top + scrollWrapper.scrollTop, middle: rect.top - wrapRect.top + scrollWrapper.scrollTop + rect.height / 2, };
-      });
+      state.draggingId = item.id; state.dragIndex = index; state.dragCount = getBranchCount(index, treeData); e.dataTransfer.effectAllowed = "move";
+      setTimeout(() => { ulContainer.querySelectorAll("li").forEach((node) => { const dataIdx = parseInt(node.dataset.dataIndex); if (dataIdx >= state.dragIndex && dataIdx < state.dragIndex + state.dragCount) node.style.opacity = "0.3"; }); }, 0);
+      state.itemBounds = Array.from(ulContainer.querySelectorAll("li")).map((node) => { const rect = node.getBoundingClientRect(); const wrapRect = scrollWrapper.getBoundingClientRect(); return { dataIndex: parseInt(node.dataset.dataIndex), top: rect.top - wrapRect.top + scrollWrapper.scrollTop, bottom: rect.bottom - wrapRect.top + scrollWrapper.scrollTop, middle: rect.top - wrapRect.top + scrollWrapper.scrollTop + rect.height / 2, }; });
     };
 
     li.ondragend = () => { state.draggingId = null; dropIndicator.style.display = "none"; render(); };
     ulContainer.appendChild(li);
   });
 
-  if (focusedId) {
-    setTimeout(() => {
-      const target = ulContainer.querySelector(`[data-id="${focusedId}"]`);
-      if (target) target.focus();
-    }, 0);
-  }
+  if (focusedId) { setTimeout(() => { const target = ulContainer.querySelector(`[data-id="${focusedId}"]`); if (target) target.focus(); }, 0); }
 };
 
 scrollWrapper.ondragover = (e) => {
@@ -910,18 +699,13 @@ scrollWrapper.ondragover = (e) => {
   const mouseY = e.clientY - wrapRect.top + scrollWrapper.scrollTop;
   const mouseX = e.clientX - wrapRect.left;
 
-  let boundIdx = state.itemBounds.length;
-  let referenceBound = null;
-  for (let i = 0; i < state.itemBounds.length; i++) {
-    if (mouseY < state.itemBounds[i].middle) { boundIdx = i; referenceBound = state.itemBounds[i]; break; }
-  }
+  let boundIdx = state.itemBounds.length; let referenceBound = null;
+  for (let i = 0; i < state.itemBounds.length; i++) { if (mouseY < state.itemBounds[i].middle) { boundIdx = i; referenceBound = state.itemBounds[i]; break; } }
 
   const insertDataIndex = referenceBound ? referenceBound.dataIndex : treeData.length;
   const prevVisibleDataIndex = boundIdx > 0 ? state.itemBounds[boundIdx - 1].dataIndex : -1;
 
-  if (insertDataIndex > state.dragIndex && insertDataIndex <= state.dragIndex + state.dragCount) {
-    dropIndicator.style.display = "none"; state.targetIndex = -1; return;
-  }
+  if (insertDataIndex > state.dragIndex && insertDataIndex <= state.dragIndex + state.dragCount) { dropIndicator.style.display = "none"; state.targetIndex = -1; return; }
 
   const maxDepth = prevVisibleDataIndex >= 0 ? treeData[prevVisibleDataIndex].depth + 1 : 0;
   const finalDepth = clamp(Math.max(0, Math.floor((mouseX - 24) / INDENT_SIZE)), 0, maxDepth);
@@ -934,36 +718,27 @@ scrollWrapper.ondragover = (e) => {
 };
 
 scrollWrapper.ondrop = async (e) => {
-  e.preventDefault();
-  dropIndicator.style.display = "none";
+  e.preventDefault(); dropIndicator.style.display = "none";
   if (state.targetIndex !== -1 && state.draggingId) {
     const focusedId = state.draggingId;
-    if (state.prevVisibleDataIndex >= 0 && state.targetDepth > treeData[state.prevVisibleDataIndex].depth) {
-      treeData[state.prevVisibleDataIndex].collapsed = false;
-    }
-
+    if (state.prevVisibleDataIndex >= 0 && state.targetDepth > treeData[state.prevVisibleDataIndex].depth) { treeData[state.prevVisibleDataIndex].collapsed = false; }
     const branch = treeData.splice(state.dragIndex, state.dragCount);
     const depthDelta = state.targetDepth - branch[0].depth;
     branch.forEach((item) => { item.depth += depthDelta; });
-
     let actualInsertIndex = state.targetIndex;
     if (state.targetIndex > state.dragIndex) actualInsertIndex -= state.dragCount;
-
     treeData.splice(actualInsertIndex, 0, ...branch);
-    render(); // 拖拽后也是第一时间反馈 UI 占位
+    render();
     await syncToCanvas();
-    scheduleNumberingRefresh({ focusedId });
+    scheduleDataRefresh({ focusedId });
   }
-  state.draggingId = null;
-  state.targetIndex = -1;
+  state.draggingId = null; state.targetIndex = -1;
 };
 
 state.unsub = api.onChange(() => {
   if (state.suppressChange || state.draggingId) return;
   clearTimeout(state.renderTimer);
-  state.renderTimer = setTimeout(() => {
-    scheduleNumberingRefresh({ reinit: true });
-  }, 500);
+  state.renderTimer = setTimeout(() => { scheduleDataRefresh({ reinit: true }); }, 500);
 });
 
 registry.set(container, { cleanup });
