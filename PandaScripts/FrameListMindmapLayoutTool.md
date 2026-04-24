@@ -108,7 +108,7 @@ const initTreeData = () => {
   const traverse = (frame, depth) => {
     if (!frame || visited.has(frame.id)) return;
     visited.add(frame.id);
-    data.push({ id: frame.id, name: frame.name || "未命名", depth, collapsed: collapsedSet.has(frame.id) });
+    data.push({ id: frame.id, name: frame.name, depth, collapsed: collapsedSet.has(frame.id) });
     const children = (childrenMap.get(frame.id) || [])
       .map((id) => frameById.get(id))
       .filter(Boolean)
@@ -748,7 +748,7 @@ const render = (focusedId = null) => {
     }
 
     const text = document.createElement("span");
-    text.textContent = item.name;
+    text.textContent = item.name || "未命名";
     Object.assign(text.style, { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none", flex: "1", });
 
     const actions = document.createElement("div");
