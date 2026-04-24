@@ -6,6 +6,7 @@
 - 界面升级：支持拖拽顶部栏改变面板位置，拖拽右下角调整界面宽高度，并限制了边界和最小宽高。
 - 配置存储：布局设置和视窗尺寸位置使用 ea 脚本配置接口保存。
 - 稳定性修复：已修复新建节点时因缺少默认渲染属性导致的画布布局崩溃问题。
+- 新增功能：在设置中增加 Frame Marker 开关，默认将所有 Frame 设置为 "marker" 角色。
 */
 
 const api = ea.getExcalidrawAPI();
@@ -41,6 +42,7 @@ const DEFAULT_LAYOUT_SETTINGS = {
   height: 500,
   left: -1,
   top: 60,
+  isFrameMarker: true, // 【新增】默认开启 marker 类型
 };
 const ARROW_STROKE_COLOR = "#1e1e1e";
 const ARROW_STROKE_WIDTH = 4;
@@ -62,6 +64,7 @@ const loadConfig = () => {
       height: sanitizeNumber(saved.height, DEFAULT_LAYOUT_SETTINGS.height),
       left: sanitizeNumber(saved.left, DEFAULT_LAYOUT_SETTINGS.left),
       top: sanitizeNumber(saved.top, DEFAULT_LAYOUT_SETTINGS.top),
+      isFrameMarker: saved.isFrameMarker !== undefined ? saved.isFrameMarker : DEFAULT_LAYOUT_SETTINGS.isFrameMarker, // 【新增】读取 marker 配置
     };
   } catch {
     return { ...DEFAULT_LAYOUT_SETTINGS };
@@ -157,6 +160,10 @@ const cloneSceneElement = (element, elementIdMap, frameIdMap, groupIdMap) => {
   if (typeof cloned.containerId === "string" && elementIdMap.has(cloned.containerId)) cloned.containerId = elementIdMap.get(cloned.containerId);
   if (cloned.startBinding?.elementId && elementIdMap.has(cloned.startBinding.elementId)) cloned.startBinding.elementId = elementIdMap.get(cloned.startBinding.elementId);
   if (cloned.endBinding?.elementId && elementIdMap.has(cloned.endBinding.elementId)) cloned.endBinding.elementId = elementIdMap.get(cloned.endBinding.elementId);
+  
+  // 【新增】如果克隆的是 frame，一并同步配置的 role
+  if (cloned.type === "frame") cloned.frameRole = CONFIG.isFrameMarker ? "marker" : null;
+  
   return cloned;
 };
 
@@ -215,6 +222,10 @@ const syncToCanvas = async () => {
   framesToEdit.forEach((frame) => {
     const el = ea.elementsDict[frame.id];
     el.boundElements = el.boundElements ? el.boundElements.filter((b) => !oldArrowIds.has(b.id)) : [];
+    
+    // 【新增】在排版更新时，强制同步 Frame Role 配置
+    el.frameRole = CONFIG.isFrameMarker ? "marker" : null;
+    
     frameMap.set(frame.id, el);
   });
 
@@ -506,22 +517,45 @@ const settingsPanel = document.createElement("div");
 Object.assign(settingsPanel.style, { display: "none", padding: "10px 12px", borderBottom: "1px solid var(--background-modifier-border)", background: "var(--background-primary, #ffffff)" });
 const settingsGrid = document.createElement("div");
 Object.assign(settingsGrid.style, { display: "grid", gridTemplateColumns: "1fr auto", gap: "8px 10px", alignItems: "center" });
+
 const horizontalGapInput = document.createElement("input");
 horizontalGapInput.type = "number"; horizontalGapInput.min = "0"; horizontalGapInput.step = "10";
 const verticalGapInput = document.createElement("input");
 verticalGapInput.type = "number"; verticalGapInput.min = "0"; verticalGapInput.step = "10";
+// 【新增】Marker 开关 UI
+const isFrameMarkerInput = document.createElement("input");
+isFrameMarkerInput.type = "checkbox";
+isFrameMarkerInput.style.cursor = "pointer";
+
 const styleSettingsInput = (input) => { Object.assign(input.style, { width: "72px", padding: "4px 6px", borderRadius: "6px", border: "1px solid var(--background-modifier-border, #d4d4d8)", background: "var(--background-primary, #ffffff)", color: "var(--text-normal, #1e293b)", fontSize: "12px" }); };
 styleSettingsInput(horizontalGapInput); styleSettingsInput(verticalGapInput);
+
 const makeSettingRow = (labelText, inputEl) => { const label = document.createElement("div"); label.textContent = labelText; label.style.color = "var(--text-muted, #64748b)"; label.style.fontSize = "12px"; settingsGrid.appendChild(label); settingsGrid.appendChild(inputEl); };
-makeSettingRow("水平间距", horizontalGapInput); makeSettingRow("垂直间距", verticalGapInput);
+makeSettingRow("水平间距", horizontalGapInput); 
+makeSettingRow("垂直间距", verticalGapInput);
+makeSettingRow("设为 Marker", isFrameMarkerInput); // 【新增】加入面板设置
+
 settingsPanel.appendChild(settingsGrid);
 
-const syncSettingsInputs = () => { horizontalGapInput.value = String(CONFIG.horizontalGap); verticalGapInput.value = String(CONFIG.verticalGap); };
-const applySettingsFromInputs = async () => {
-  const nextSettings = { horizontalGap: sanitizeNumber(horizontalGapInput.value, DEFAULT_LAYOUT_SETTINGS.horizontalGap), verticalGap: sanitizeNumber(verticalGapInput.value, DEFAULT_LAYOUT_SETTINGS.verticalGap) };
-  saveConfig(nextSettings); syncSettingsInputs(); await syncToCanvas(); render();
+const syncSettingsInputs = () => { 
+  horizontalGapInput.value = String(CONFIG.horizontalGap); 
+  verticalGapInput.value = String(CONFIG.verticalGap); 
+  isFrameMarkerInput.checked = CONFIG.isFrameMarker; // 【新增】同步 UI 状态
 };
-horizontalGapInput.onchange = applySettingsFromInputs; verticalGapInput.onchange = applySettingsFromInputs;
+const applySettingsFromInputs = async () => {
+  const nextSettings = { 
+    horizontalGap: sanitizeNumber(horizontalGapInput.value, DEFAULT_LAYOUT_SETTINGS.horizontalGap), 
+    verticalGap: sanitizeNumber(verticalGapInput.value, DEFAULT_LAYOUT_SETTINGS.verticalGap),
+    isFrameMarker: isFrameMarkerInput.checked // 【新增】保存 Marker 设置
+  };
+  saveConfig(nextSettings); 
+  syncSettingsInputs(); 
+  await syncToCanvas(); 
+  render();
+};
+horizontalGapInput.onchange = applySettingsFromInputs; 
+verticalGapInput.onchange = applySettingsFromInputs;
+isFrameMarkerInput.onchange = applySettingsFromInputs; // 【新增】监听切换事件
 
 const expandAllBtn = createIconButton("➕", "全部展开", (e) => { e.stopPropagation(); treeData.forEach(item => { item.collapsed = false; collapsedSet.delete(item.id); }); render(); });
 const collapseAllBtn = createIconButton("➖", "全部折叠", (e) => { e.stopPropagation(); treeData.forEach(item => { item.collapsed = true; collapsedSet.add(item.id); }); render(); });
@@ -683,6 +717,7 @@ const addNewFrameToCanvas = async (name, insertToDataCallback) => {
     versionNonce: Math.floor(Math.random() * 1_000_000_000), // 【关键修复】必须是有效整数
     isDeleted: false,
     locked: false,            // 【关键修复】确保节点未被锁定
+    frameRole: CONFIG.isFrameMarker ? "marker" : null, // 【新增】新建时根据设置赋予 marker 角色
     link: null,
     updated: Date.now(),      // 补充更新时间
   };
