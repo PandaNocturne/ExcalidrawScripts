@@ -1,4 +1,3 @@
-await ea.addElementsToView();
 const els = ea.getViewElements();
 const frameEls = els.filter(el => el.type === "frame");
 
@@ -24,7 +23,7 @@ for (let frameEl of frameEls) {
   frameEl.y = minY - 20;
   frameEl.width = maxX - minX + 40;
   frameEl.height = maxY - minY + 40;
-  await ea.addElementsToView(false, false);
 }
 
+await ea.addElementsToView(false, false);
 new Notice("Frame已自适应!", 1000);
