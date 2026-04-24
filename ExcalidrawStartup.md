@@ -216,7 +216,6 @@ const __runToolsIfNeeded = async (data) => {
       continue;
     }
 
-    // 
     await new Promise((r) => requestAnimationFrame(r));
     app.commands.executeCommandById(commandId);
     __markToolActive(view, tool.name);
