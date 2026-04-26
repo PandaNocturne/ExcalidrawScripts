@@ -1,6 +1,9 @@
 /*
+
 ## ExcalidrawMinimap
+
 切换式小地图脚本。
+
 - 首次运行：在当前 Excalidraw 视图显示 minimap
 - 再次运行：关闭 minimap
 - 点击 minimap：平移主视图到对应位置
@@ -49,7 +52,7 @@ const DEFAULT_CONFIG = {
   elementClickAction: "zoom",
   padding: 120,
   side: "top-right",
-  offset: 12,
+  offset: "12",
   background: "rgba(20,20,20,0.22)",
   border: "1px solid rgba(255,255,255,0.18)",
   frameFill: "rgba(120,180,255,0.22)",
@@ -74,6 +77,53 @@ const DEFAULT_CONFIG = {
   maxZoom: 8,
 };
 
+const normalizeOffsetValue = (value) => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value >= 0 ? String(Math.round(value)) : DEFAULT_CONFIG.offset;
+  }
+
+  if (typeof value !== "string") return DEFAULT_CONFIG.offset;
+
+  const parts = value
+    .trim()
+    .split(/[\s,]+/)
+    .map(part => part.trim())
+    .filter(Boolean);
+
+  if (!parts.length || parts.length > 4) return DEFAULT_CONFIG.offset;
+
+  const numbers = [];
+  for (const part of parts) {
+    const n = Number(part);
+    if (!Number.isFinite(n) || n < 0) return DEFAULT_CONFIG.offset;
+    numbers.push(String(Math.round(n)));
+  }
+
+  return numbers.join(",");
+};
+
+const parseOffsetMargins = (value) => {
+  const values = normalizeOffsetValue(value).split(",").map(part => Number(part.trim()));
+
+  if (values.length === 1) {
+    const [all] = values;
+    return { top: all, right: all, bottom: all, left: all };
+  }
+
+  if (values.length === 2) {
+    const [vertical, horizontal] = values;
+    return { top: vertical, right: horizontal, bottom: vertical, left: horizontal };
+  }
+
+  if (values.length === 3) {
+    const [top, horizontal, bottom] = values;
+    return { top, right: horizontal, bottom, left: horizontal };
+  }
+
+  const [top, right, bottom, left] = values;
+  return { top, right, bottom, left };
+};
+
 const loadSettings = () => {
   const saved = ea.getScriptSettings?.() || {};
   return {
@@ -85,7 +135,7 @@ const loadSettings = () => {
       ? saved[SETTINGS_KEY].elementClickAction
       : DEFAULT_CONFIG.elementClickAction,
     side: POSITION_STYLES.includes(saved[SETTINGS_KEY]?.side) ? saved[SETTINGS_KEY].side : DEFAULT_CONFIG.side,
-    offset: Number(saved[SETTINGS_KEY]?.offset ?? DEFAULT_CONFIG.offset),
+    offset: normalizeOffsetValue(saved[SETTINGS_KEY]?.offset ?? DEFAULT_CONFIG.offset),
     viewportAutoHideCoverage: (() => {
       const v = Number(saved[SETTINGS_KEY]?.viewportAutoHideCoverage);
       if (!Number.isFinite(v)) return DEFAULT_CONFIG.viewportAutoHideCoverage;
@@ -144,26 +194,28 @@ const ensureRelativePosition = (el) => {
 };
 
 const applyPlacement = () => {
+  const margins = parseOffsetMargins(CONFIG.offset);
+
   root.style.left = "";
   root.style.right = "";
   root.style.top = "";
   root.style.bottom = "";
 
   if (CONFIG.side === "top-left") {
-    root.style.left = `${CONFIG.offset}px`;
-    root.style.top = `${CONFIG.offset}px`;
+    root.style.left = `${margins.left}px`;
+    root.style.top = `${margins.top}px`;
   }
   if (CONFIG.side === "top-right") {
-    root.style.right = `${CONFIG.offset}px`;
-    root.style.top = `${CONFIG.offset}px`;
+    root.style.right = `${margins.right}px`;
+    root.style.top = `${margins.top}px`;
   }
   if (CONFIG.side === "bottom-right") {
-    root.style.right = `${CONFIG.offset}px`;
-    root.style.bottom = `${CONFIG.offset}px`;
+    root.style.right = `${margins.right}px`;
+    root.style.bottom = `${margins.bottom}px`;
   }
   if (CONFIG.side === "bottom-left") {
-    root.style.left = `${CONFIG.offset}px`;
-    root.style.bottom = `${CONFIG.offset}px`;
+    root.style.left = `${margins.left}px`;
+    root.style.bottom = `${margins.bottom}px`;
   }
 };
 
@@ -255,11 +307,11 @@ const openSettingsModal = () => {
   const applyDraft = ({ persist = false } = {}) => {
     const width = Number(draft.width);
     const height = Number(draft.height);
-    const offset = Number(draft.offset);
+    const normalizedOffset = normalizeOffsetValue(draft.offset);
 
     if (!Number.isFinite(width) || width < 80) return false;
     if (!Number.isFinite(height) || height < 60) return false;
-    if (!Number.isFinite(offset) || offset < 0) return false;
+    if (!draft.offset.trim() || normalizedOffset !== normalizeOffsetValue(draft.offset.trim())) return false;
     if (!POSITION_STYLES.includes(draft.side)) return false;
     if (!["move", "zoom"].includes(draft.elementClickAction)) return false;
     const cov = Number(draft.viewportAutoHideCoverage);
@@ -272,7 +324,7 @@ const openSettingsModal = () => {
     CONFIG.adaptiveSize = draft.adaptiveSize;
     CONFIG.elementClickAction = draft.elementClickAction;
     CONFIG.side = draft.side;
-    CONFIG.offset = Math.round(offset);
+    CONFIG.offset = normalizedOffset;
     CONFIG.viewportAutoHideCoverage = Math.min(1, Math.max(0.5, cov));
     CONFIG.includeViewportInBounds = draft.includeViewportInBounds;
     CONFIG.viewportInsetPadding = Math.round(vpInset);
@@ -358,9 +410,9 @@ const openSettingsModal = () => {
 
   new ea.obsidian.Setting(modal.contentEl)
     .setName("📤 视图外边距")
-    .setDesc("小地图外缘与 Excalidraw 视图容器边缘之间的留白（px）")
+    .setDesc("支持 margin 风格语法，多值采用空格或逗号分隔")
     .addText(text => {
-      text.setPlaceholder("12");
+      text.setPlaceholder("12 24");
       text.setValue(draft.offset);
       text.onChange(value => {
         draft.offset = value;
@@ -424,7 +476,7 @@ const openSettingsModal = () => {
       .onClick(() => {
         const width = Number(draft.width);
         const height = Number(draft.height);
-        const offset = Number(draft.offset);
+        const normalizedOffset = normalizeOffsetValue(draft.offset);
 
         if (!Number.isFinite(width) || width < 80) {
           new Notice("📐 宽度至少为 80");
@@ -434,8 +486,8 @@ const openSettingsModal = () => {
           new Notice("📏 高度至少为 60");
           return;
         }
-        if (!Number.isFinite(offset) || offset < 0) {
-          new Notice("📤 视图外边距不能小于 0");
+        if (!draft.offset.trim() || normalizedOffset !== normalizeOffsetValue(draft.offset.trim())) {
+          new Notice("📤 请输入 1–4 个非负数，按 margin 顺序填写，支持空格或逗号分隔");
           return;
         }
         if (!POSITION_STYLES.includes(draft.side)) {
