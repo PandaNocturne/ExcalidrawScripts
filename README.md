@@ -51,9 +51,8 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 ```
 
 - Author：熊猫别熬夜
+- PKMerDoc：[PKMer_自定义 Excalidraw 脚本 -Excalidraw 小地图（Excalidraw Minimap）]( https://pkmer.cn/show/20260419111030 )
 - Description：为当前 Excalidraw 视图提供可开关的小地图，支持点击平移、拖动 viewport、滚轮缩放，以及位置与尺寸等设置。
-  - 支持点击 minimap 元素后移动或缩放到目标区域
-  - 支持在四角定位、调整宽高上限与页边距
 
 ## 文档编辑
 
@@ -202,8 +201,6 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Description：用于调整多个图片 (image)、矩形框 (rectangle)、Frame 边框的大小，以选中的元素的最大宽度 (高度) 或者最小宽度 (高度) 进行统一缩放，分别有 `等宽缩放`、`等高缩放`、`完全相等` 这 3 个选项。
   - ![File-20240426045317709.gif](https://raw.githubusercontent.com/PandaNocturne/ImageAssets/main/Obsidian/202408172318461.gif)
 
-> 这个非常好用，简单但实用
-
 ### ImagesGridLayoutTool
 
 ```excalidraw-script-install
@@ -259,7 +256,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 ```
 
 - Author：熊猫别熬夜
-- PKMerDoc：待写
+- PKMerDoc：
 - Description：采用 [Remove.bg](https://www.remove.bg/zh/g/developers) 的 API 来对 Excalidraw 中的图片进行抠图。
   - ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302659.png!pkmer)
 
@@ -294,6 +291,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 ```
 
 - Author：熊猫别熬夜
+- PKMerDoc：[PKMer_自定义 Excalidraw 脚本 -Frame 悬浮大纲（FrameFloatingOutline）]( https://pkmer.cn/show/20260423111744 )
 - Description：为当前 Excalidraw 视图提供可开关的悬浮 Frame 大纲，支持定位、重命名、拖拽排序、删除 Frame 及其内部元素，并可调整面板尺寸与位置。
 
 ### FrameListMindmapLayoutTool
@@ -303,6 +301,7 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 ```
 
 - Author：熊猫别熬夜
+- PKMerDoc：[PKMer_自定义 Excalidraw 脚本 -Frame 大纲导图工具（FrameListMindmapLayoutTool）]( https://pkmer.cn/show/20260423111620 )
 - Description：**FrameListMindmapLayoutTool** 是一个功能强大的 Excalidraw 脚本，专门用于管理和布局 Frame（框架）元素，将其转换为可视化的大纲导图结构。该工具提供了完整的 Frame 树形结构管理、自动布局、手动层级编号等功能。
 
 
