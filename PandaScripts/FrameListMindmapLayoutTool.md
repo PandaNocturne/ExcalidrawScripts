@@ -104,7 +104,9 @@ const initTreeData = () => {
   });
 
   const frameById = new Map(frames.map((f) => [f.id, f]));
-  const roots = frames.filter((f) => !hasParent.has(f.id)).sort((a, b) => a.y - b.y);
+  const compareByFrameName = (a, b) =>
+    (a.name || "").localeCompare(b.name || "", undefined, { numeric: true, sensitivity: "base" });
+  const roots = frames.filter((f) => !hasParent.has(f.id)).sort(compareByFrameName);
   const data = [];
   const visited = new Set();
 
@@ -115,7 +117,7 @@ const initTreeData = () => {
     const children = (childrenMap.get(frame.id) || [])
       .map((id) => frameById.get(id))
       .filter(Boolean)
-      .sort((a, b) => a.y - b.y);
+      .sort(compareByFrameName);
     children.forEach((child) => traverse(child, depth + 1));
   };
 
