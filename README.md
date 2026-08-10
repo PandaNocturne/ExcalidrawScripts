@@ -210,6 +210,16 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Author：熊猫别熬夜
 - Description：图片布局工具，将选中的图片按行列网格自动排列，支持设置间距与列数。
 
+### Image Hover Lightbox
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/otto-OBplugins/excalidraw-image-hover-lightbox/main/scripts/Image%20Hover%20Lightbox.md
+```
+
+- Author：ottopan
+- Description：在 Excalidraw 画布中悬停图片，点击右上角全屏按钮打开可缩放的大图预览。可配置为 Startup Script，打开画布后自动启用。
+- Source：[otto-OBplugins/excalidraw-image-hover-lightbox](https://github.com/otto-OBplugins/excalidraw-image-hover-lightbox)
+
 ### UpdateCroppedImageToLocal
 
 ```excalidraw-script-install
