@@ -260,6 +260,15 @@ https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaSc
 - Description：采用 [Remove.bg](https://www.remove.bg/zh/g/developers) 的 API 来对 Excalidraw 中的图片进行抠图。
   - ![Excalidraw.md](https://cdn.pkmer.cn/images/202408281302659.png!pkmer)
 
+### MoveToTrash
+
+```excalidraw-script-install
+https://raw.githubusercontent.com/PandaNocturne/ExcalidrawScripts/master/PandaScripts/MoveToTrash.md
+```
+
+- Author：熊猫别熬夜
+- Description：将选中的图片元素及其本地文件移入回收站；依赖 QuickAdd 的复选框，可勾选要删除的图片。
+
 ## Frame 相关
 
 ### QuickSwitchFrame
